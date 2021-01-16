@@ -16,6 +16,7 @@ variables:
     when: always
     paths:
       - rm32
+      - built/docs
   dependencies: []
 
 
@@ -24,7 +25,9 @@ build-command-riscos:
   <<: *common
   stage: build
   script:
+    - xsltproc --version || { apt-get update && apt-get install -y xsltproc ; }
     - riscos-amu ram BUILD32=1
+    - riscos-amu docs BUILD32=1
   tags:
     - riscos
 

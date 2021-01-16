@@ -1,0 +1,19 @@
+digraph fans {
+    node [ shape=rect, penwidth=2, fontname="Optima, Rachana, Sawasdee, sans-serif" ];
+    edge [ fontname="Optima, Rachana, Sawasdee, sans-serif" ];
+
+    DeskPi [color=lightblue, style=filled, label="FanDriverDeskPi"];
+    Fargon [color=lightblue, style=filled, label="FanDriverFArgoN"];
+    FanController [color=gold, style=filled];
+
+    FanUI [color=palegreen, style=filled, label="Desktop_FanUI"];
+    FanCLI [color=palegreen, style=filled, label="*FanInfo command"];
+
+    DeskPi -> FanController [label="SWI FanController_Register"];
+    Fargon -> FanController;
+
+    FanController;
+
+    FanController -> FanUI [arrowhead=none, arrowtail=normal, dir=back, label="SWI FanController_Enumerate\n SWI FanController_Speed"];
+    FanController -> FanCLI [arrowhead=none, arrowtail=normal, dir=back];
+}

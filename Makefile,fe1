@@ -42,6 +42,10 @@ OBJS       = o.modhead \
 			 o.str \
 			 o.fans
 
+# Documentation source files
+DOCSRC = prminxml.fancontroller/xml
+
+
 include CModule
 
 # Additional dependencies

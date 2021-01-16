@@ -1,0 +1,1207 @@
+<?xml version="1.0"?>
+<!DOCTYPE riscos-prm PUBLIC "-//Gerph//DTD PRM documentation 1.02//EN"
+                            "http://gerph.org/dtd/102/prm.dtd">
+
+<riscos-prm>
+<chapter title="FanController">
+<section title="Introduction">
+<p>
+Almost all modern systems require cooling. Usually this is managed through air movement controlled by a fan.
+Other solutions exist for cooling but the fan is the most common). In some implementations these fans are
+always powered, but many have some controls, and some have monitoring of their current state as well.
+</p>
+<p>
+    Any system may have a number of these fans and they may be located in different positions within the computer
+    system, or even outside it. The FanController module provides a means by which drivers may expose controls and
+    information about the attached fans.
+</p>
+
+<p>
+    The FanController module allows the following operations to be performed on a fan:
+</p>
+<p>
+    <list type='unordered'>
+        <item>Listing the known fans.</item>
+        <item>Reading the fan speed.</item>
+        <item>Setting the fan speed.</item>
+        <item>Changing driver control type, from manual to automatic.</item>
+    </list>
+</p>
+<p>
+    The FanController module does not perform management or regulation of the fans within the system.
+</p>
+</section>
+
+
+<section title="Terminology">
+<p>
+    Fan - A device which provides thermal regulation of devices.
+</p>
+
+<p>
+    Fan Driver - A module which provides information and/or control for a fan.
+</p>
+
+<p>
+    Location - A physical position in which a fan may be placed, relative to the computer system.
+</p>
+</section>
+
+
+<section title="Technical details">
+
+<subsection title="Structure">
+<p>
+    The FanController module provides an interface which users can call to obtain information about the fans attached
+    to the computer system. It does so through registered drivers which can control a single fan. Applications and
+    tools call the FanController to request information about the fans. The FanController dispatches the requests,
+    if necessary, to the drivers which handle the fans.
+</p>
+<p>
+    <image src="fans.png" type="png" caption="Relationship between components"/>
+</p>
+</subsection>
+
+<subsection title="Fans">
+<p>
+    Although Fans within the context of the FanController are generally considered to be devices that move
+    air to perform cooling, there are other mechanisms for cooling. These can still be managed through the
+    FanController system, although it is recommended that they express their function in terms of the
+    duty-cycle percentage, rather than RPM speed.
+</p>
+
+<p>
+Fans generally have two modes of control. They can be controlled to operate at specific speeds, usually reported
+in RPM. Or they can be controlled as fractions of their full speed, reported as a percentage. The fan may be
+unable to report a speed if it has no explicit controls - it may only be able to be turned on and off.
+The control of that fan spped may be entirely handled automatically to allow the driver (or separate hardware) to
+tailor the fan's behaviour to the system's needs. Additionally, some fans may be able to report that they have failed.
+</p>
+
+<p>
+    Most fans do not have completely variable controls, and do not allow any set of speeds to be selected. The
+    Fan driver may declare the speeds which the fan can achieve or the accuracy at which it select them. For example,
+    a given fan might only be able to run at 2200, 3000, 3400 and 3900 RPM, and so would report those as the only
+    speeds it provides. Or it might only be able to control the percentage at 10% intervals, so would report an
+    accuracy of 10%.
+</p>
+</subsection>
+
+<subsection title="Speed">
+<p>
+    The following fan speeds values and ranges are used within the FanController interfaces:
+</p>
+
+<p>
+    <value-table>
+        <!-- Consider we might allow special error codes from a driver, eg 'pipe blocked' -->
+        <value number="&le; -3">Reserved for future error codes</value>
+        <value number="-2">Error: Fan has failed</value>
+        <value number="-1">Error: Fan is disconnected</value>
+        <value number="0">Fan is disabled</value>
+        <value number="1-100">Fan is duty-cycle (or equivalent) controlled, to a percentage value.
+            0 and 100 may be used for binary controlled fans</value>
+        <value number="101">Fan operating under automatic control and its speed is not determined</value>
+        <value number="&ge; 200">Fan speed in RPM</value>
+    </value-table>
+</p>
+</subsection>
+
+<subsection title="Control mode">
+<p>
+    Fans may be placed into different control modes. Not all fans will support all modes, and this will
+    be indicated by the fan capability flags. The following control modes are used within the FanController
+    interfaces:
+</p>
+
+<p>
+    <value-table>
+        <value number="-1">Fan system error</value>
+        <value number="0">Manual speed control</value>
+        <value number="1">Automatic speed control (favour performance)</value>
+        <value number="2">Automatic speed control (favour quietness)</value>
+    </value-table>
+</p>
+</subsection>
+
+<subsection title="Capability flags">
+<p>
+    Fan drivers may have different capabilities, and may be able to support different modes of operation.
+    These can be declared through the capabilities flags. This is a 32bit value containing bit values which
+    describe what the fan can do.
+</p>
+<p>
+    <bitfield-table>
+        <bit number="0" state="set">Fan supports manual configuration</bit>
+        <bit number="0" state="clear">Fan does not support manual configuration</bit>
+        <bit number="1" state="set">Fan supports automatic configuration</bit>
+        <bit number="1" state="clear">Fan does not support automatic configuration</bit>
+        <bit number="2" state="set">Fan supports changing location</bit>
+        <bit number="2" state="clear">Fan does not support changing location</bit>
+        <bit number="3" state="set">Fan may report failure errors</bit>
+        <bit number="3" state="clear">Fan cannot report failure errors</bit>
+        <bit number="4-27">Reserved, must be 0</bit>
+        <bit number="28-31"><p>Cooling device type:</p>
+            <p>
+            <value-table>
+                <value number="0">Air cooling fan</value>
+                <value number="1">Air cooling piezoelectic pump</value>
+                <value number="2">Peltier cooling (for a pump driving cooling)</value>
+                <value number="3">Liquid cooling (for a pump driving cooling)</value>
+                <value number="4-15">Reserved for future expansion</value>
+            </value-table>
+            </p>
+        </bit>
+    </bitfield-table>
+</p>
+
+<p>
+    The FanController module will use these capabilities to restrict the calls that can be made and avoid
+    calls to the FanDriver.
+</p>
+</subsection>
+
+<subsection title="Location identifier">
+<p>
+    Fans may be located in different positions relative to the system which is reporting their state. Each
+    fan must supply a location identifier which describes where the fan is located. This is an enumerated set
+    which should allow user interfaces give a visual representation, or description, of the fan locations.
+    Fan locations are broken down into three major parts:
+</p>
+<p>
+    <list type="unordered">
+        <item><p>Device - this indicates the area or entity that the fan is associated with. This allows the user
+              to identify what type of device the fan is trying to cool.
+              The following device types are defined:</p>
+              <p>
+                <value-table>
+                    <value number="0">CPU device</value>
+                    <value number="1">GPU device</value>
+                    <value number="2">Memory device</value>
+                    <value number="3">I/O card</value>
+                    <value number="4-15">Reserved for discrete internal components</value>
+                    <value number="16">PSU fan</value>
+                    <value number="17">Backplane fan</value>
+                    <value number="18">Radiator fan (fans attached to radiators on passive or active cooling)</value>
+                    <value number="19">Chassis fan</value>
+                    <value number="20-31">Reserved for macro internal components</value>
+                    <value number="32">External fan</value>
+                    <value number="33-239">Reserved for other devices</value>
+                    <value number="240-254">Reserved for users</value>
+                    <value number="255">Generic fan, unknown properties</value>
+                </value-table>
+              </p>
+        </item>
+        <item>Sequence number - this gives more information about which device or location is being described.
+              The meaning differs depending on the device type. For internal devices this sequence number
+              describes the instance of the device which is being cooled. For example, where multiple CPUs
+              exist, each fan will be associated with the CPUs by the sequence number.
+        </item>
+        <item>
+              Location - The location in relation to the device. The meaning of this field is dependant on the
+              device type.
+        </item>
+    </list>
+</p>
+<p>
+    Each of these device types has an assignment for the location and sequence number within the location
+    identifier. This allows more specific locations to be supplied to the user.
+</p>
+
+<subsubsection title="CPU device">
+    <category title="Fan locations">
+        <p><value-table>
+            <value number="0">On chip</value>
+            <value number="other">Reserved for future expansion</value>
+        </value-table></p>
+    </category>
+    <category title="Sequence numbers">
+        <p>The sequence number describes the CPU number to which the fan is attached. The value 255 should be used for unknown CPU numbers.</p>
+    </category>
+</subsubsection>
+
+<subsubsection title="GPU device">
+    <category title="Fan locations">
+        <p><value-table>
+            <value number="0">On chip</value>
+            <value number="other">Reserved for future expansion</value>
+        </value-table></p>
+    </category>
+    <category title="Sequence numbers">
+        <p>The sequence number describes the GPU number to which the fan is attached. The value 255 should be used for unknown GPU numbers.</p>
+    </category>
+</subsubsection>
+
+<subsubsection title="Memory device">
+    <category title="Fan locations">
+        <p><value-table>
+            <value number="0">On module (where a fan cools a single module)</value>
+            <value number="1">On CPU bank (where a fan cools a bank of memory modules associated with a CPU)</value>
+            <value number="2">On channel (where a fan cools a single channel for a bank of modules)</value>
+            <value number="3">On riser (where a fan cools a collection of memory modules on a riser card)</value>
+            <value number="other">Reserved for future expansion</value>
+        </value-table></p>
+    </category>
+    <category title="Sequence numbers">
+        <p>The sequence number describes the component to which the fan is attached. The value 255 should be used for unknown component numbers.</p>
+    </category>
+</subsubsection>
+
+<subsubsection title="I/O card">
+    <category title="Fan locations">
+        <p><value-table>
+            <value number="0">On card</value>
+            <value number="other">Reserved for future expansion</value>
+        </value-table></p>
+    </category>
+    <category title="Sequence numbers">
+        <p>The sequence number describes the card to which the fan is attached. The value 255 should be used for unknown card numbers. The meaning of this card number is implementation defined.</p>
+    </category>
+</subsubsection>
+
+<subsubsection title="PSU fans">
+    <category title="Fan locations">
+        <p><value-table>
+            <value number="0-63"><p>Position described within the logical space of the device, as described by facing the front of the device:</p>
+                <p><bitfield-table>
+                    <bit number="0-1">
+                        <value-table>
+                            <value number="0">Lateral position: Unspecified</value>
+                            <value number="1">Lateral position: Left</value>
+                            <value number="2">Lateral position: Middle</value>
+                            <value number="3">Lateral position: Right</value>
+                        </value-table>
+                    </bit>
+                    <bit number="2-3">
+                        <value-table>
+                            <value number="0">Longitudinal position: Unspecified</value>
+                            <value number="1">Longitudinal position: Front</value>
+                            <value number="2">Longitudinal position: Middle</value>
+                            <value number="3">Longitudinal position: Rear</value>
+                        </value-table>
+                    </bit>
+                    <bit number="4-5">
+                        <value-table>
+                            <value number="0">Vertical position: Unspecified</value>
+                            <value number="1">Vertical position: Lower</value>
+                            <value number="2">Vertical position: Middle</value>
+                            <value number="3">Vertical position: Upper</value>
+                        </value-table>
+                    </bit>
+                </bitfield-table></p>
+            </value>
+            <value number="64-254">Reserved for future expansion</value>
+            <value number="255">Unspecified location</value>
+        </value-table></p>
+    </category>
+    <category title="Sequence numbers">
+        <p>The sequence number distinguishes multiple devices in the specified location.</p>
+    </category>
+</subsubsection>
+
+<subsubsection title="Backplane fans">
+    <category title="Fan locations">
+        <p>Backplane fans use the same fan locations as described in PSU fans, above.</p>
+    </category>
+    <category title="Sequence numbers">
+        <p>The sequence number distinguishes multiple devices in the specified location.</p>
+    </category>
+</subsubsection>
+
+<subsubsection title="Radiator fans">
+    <p>
+        Radiator fans are fans which are attached to cool the radiators used by active or passive
+        cooling systems such as heat pipes or liquid cooling heat exchanges.
+    </p>
+    <category title="Fan locations">
+        <p>Radiator fans use the same fan locations as described in PSU fans, above.</p>
+    </category>
+    <category title="Sequence numbers">
+        <p>The sequence number distinguishes multiple devices in the specified location.</p>
+    </category>
+</subsubsection>
+
+<subsubsection title="Chassis fans">
+    <category title="Fan locations">
+        <p>Backplane fans use the same fan locations as described in PSU fans, above.</p>
+    </category>
+    <category title="Sequence numbers">
+        <p>The sequence number distinguishes multiple devices in the specified location.</p>
+    </category>
+</subsubsection>
+
+<subsubsection title="External fans">
+    <category title="Fan locations">
+        <p><value-table>
+            <value number="0">UPS</value>
+            <value number="1">External drive array</value>
+            <value number="2">External device</value>
+            <value number="64">Desk fan</value>
+            <value number="65">Aircon</value>
+            <value number="255">Unspecified location</value>
+        </value-table></p>
+    </category>
+    <category title="Sequence numbers">
+        <p>The sequence number distinguishes multiple devices in the specified location.</p>
+    </category>
+</subsubsection>
+
+<subsubsection title="Generic fans">
+    <category title="Fan locations">
+        <p><value-table>
+            <value number="0">Unknown location</value>
+        </value-table></p>
+    </category>
+    <category title="Sequence numbers">
+        <p>The sequence number may be used to distinguish devices.</p>
+    </category>
+</subsubsection>
+
+</subsection>
+
+<subsection title="Fan registration">
+    <p>
+        Fans are registered with FanController through <reference type="swi" name="FanController_Register"/> when
+        they are detected. If they are removed, or the driver is terminated, the fan is deregistered with
+        <reference type="swi" name="FanController_Deregister"/>. On registration the fan will be assigned an identifier
+        which is unique to this execution of the FanController. The fan identifiers will be recycled if the
+        FanController is restarted.
+    </p>
+</subsection>
+
+</section>
+
+
+<section title="Service calls">
+<service-definition name="FanController_Started"
+                    number="10080"
+                    description="Annoucement that the FanController module has been started">
+<entry>
+ <register-use number="0">API version * 100</register-use>
+ <register-use number="1">Service number (&hex;10080)</register-use>
+</entry>
+
+<exit>
+ <register-use number="0" state="preserved" />
+ <register-use number="1" state="preserved" />
+</exit>
+
+<use>
+<p>
+    This service is issued by FanController on a callback once the module has initialised. On receipt of this
+    service, fan drivers may register the fans that they control with the module. Drivers may call any
+    of the FanController SWIs.
+</p>
+
+</use>
+
+<related>
+ <reference type="swi" name="FanController_Register" />
+ <reference type="service" name="FanController_Dying" />
+ <reference type="service" name="FanController_FanChanged" />
+</related>
+
+</service-definition>
+
+<service-definition name="FanController_Dying"
+                    number="10081"
+                    description="Announcement that FanController is shutting down">
+<entry>
+ <register-use number="1">Service number (&hex;10081)</register-use>
+</entry>
+
+<exit>
+ <register-use number="1" state="preserved" />
+</exit>
+
+<use>
+<p>This service is issued by FanController when it is killed. No further SWI calls should be made
+to the module. It is should be assumed that all registered fans are no longer registered.</p>
+
+</use>
+
+<related>
+ <reference type="service" name="FanController_Started" />
+</related>
+
+</service-definition>
+
+<service-definition name="FanController_FanChanged"
+                    number="10082"
+                    description="Announcement of a change in the registered fans">
+<entry>
+ <register-use number="0">Fan identifier</register-use>
+ <register-use number="1">Service number (&hex;10082)</register-use>
+ <register-use number="2">1 if a fan has been registered, 0 if a fan has been deregistered</register-use>
+</entry>
+
+<exit>
+ <register-use number="0" state="preserved" />
+ <register-use number="1" state="preserved" />
+ <register-use number="2" state="preserved" />
+</exit>
+
+<use>
+<p>This service call is issued by FanController when the list of fans has been changed, either by
+registration or deregistration.</p>
+
+</use>
+
+<related>
+ <reference type="swi" name="FanController_Register" />
+</related>
+
+</service-definition>
+
+<service-definition name="FanController_FanChangedState"
+                    number="10083"
+                    description="A change has occurred in the state of a fan state">
+<entry>
+ <register-use number="0">Fan identifier</register-use>
+ <register-use number="1">Service number (&hex;10082)</register-use>
+ <register-use number="2">Fan state, as a speed - either a negative value or a speed</register-use>
+</entry>
+
+<exit>
+ <register-use number="0" state="preserved" />
+ <register-use number="1" state="preserved" />
+ <register-use number="2" state="preserved" />
+</exit>
+
+<use>
+<p>This service call may be issued by a fan driver if it detects a transition into or out of an error state.
+The new state, given in R2, indicates either an error condition, or a regular fan speed (&ge; 0) to indicate
+that a fan has begun working. This service call should not be issued for changes in speed when running
+normally.</p>
+
+</use>
+
+<related>
+<!-- <reference type="sysvar" name="Sys$Variable" /> -->
+</related>
+
+</service-definition>
+</section>
+
+
+<section title="SWI calls">
+<swi-definition name="FanController_Version"
+                number="10080"
+                description="Read the API version for the FanController"
+                irqs="undefined"
+                fiqs="enabled"
+                processor-mode="SVC"
+                re-entrant="no">
+
+<exit>
+ <register-use number="0">Version number of the API * 100 (1.00 for this version)</register-use>
+</exit>
+
+<use>
+<p>This SWI is used to read the API version for the FanController module. Updated minor versions
+may introduce new features to the API. Major versions will be incompatible.</p>
+</use>
+
+<related>
+<!-- <reference type="vector" name="BingleV" /> -->
+</related>
+
+</swi-definition>
+
+<swi-definition name="FanController_Enumerate"
+                number="10081"
+                description="Enumerate the fans known to FanController"
+                irqs="undefined"
+                fiqs="enabled"
+                processor-mode="SVC"
+                re-entrant="no">
+
+<entry>
+ <register-use number="0">0 for first call, or value from previous call to continue enumeration</register-use>
+</entry>
+<exit>
+ <register-use number="0">Fan identifier of this fan, or -1 if there are no more entries to enumerate</register-use>
+ <register-use number="1"><reference type='subsection' name='Location identifier'>Location identifier</reference>
+    for this fan</register-use>
+ <register-use number="2"><reference type='subsection' name='Capability flags'>Capability flags</reference>
+    for this fan</register-use>
+ <register-use number="3">Pointer to the provider name for this fan</register-use>
+ <register-use number="4">Speed accuracy, in RPM, or values 1-100 for duty-cycle control,
+    or 0 for unknown accuracy</register-use>
+ <register-use number="5">Maximum supported speed in RPM, or 100 if fan uses duty-cycle control or can
+    only be turned on and off, or -1 if unknown</register-use>
+ <register-use number="6">Pointer to a table of words describing the supported
+    <reference type='subsection' name='Speed'>speeds</reference>, terminated by a -1 word, or 0 if arbitrary
+    speeds (constrained by the accuracy) may be used.</register-use>
+</exit>
+
+<use>
+<p>This SWI is used to enumerate the fans which are known to the FanController module. It should be called
+initially with R0 = 0 and each subsequent call should supply the fan identifier returned from the previous
+call. The enumeration terminates with the return of a -1 in R0, indicating that there is no more data (and
+that the other registers are not populated).</p>
+
+<p>Enumeration is not guaranteed to be in strictly ascending order of fan identifiers. If an ordered list
+    is desired, the caller should sort the returned values.</p>
+</use>
+
+<related>
+<reference type="swi" name="FanController_Info" />
+<reference type="swi" name="FanController_Register" />
+</related>
+
+</swi-definition>
+
+<swi-definition name="FanController_Info"
+                number="10082"
+                description="Read information about a fan"
+                irqs="undefined"
+                fiqs="enabled"
+                processor-mode="SVC"
+                re-entrant="no">
+
+<entry>
+ <register-use number="0">Fan identifier to get information on</register-use>
+</entry>
+<exit>
+ <register-use number="0">Fan identifier</register-use>
+ <register-use number="1"><reference type='subsection' name='Location identifier'>Location identifier</reference>
+    for this fan</register-use>
+ <register-use number="2"><reference type='subsection' name='Capability flags'>Capability flags</reference>
+    for this fan</register-use>
+ <register-use number="3">Pointer to the provider name for this fan</register-use>
+ <register-use number="4">Speed accuracy, in RPM, or values 1-100 for duty-cycle control,
+    or 0 for unknown accuracy</register-use>
+ <register-use number="5">Maximum supported speed in RPM, or 100 if fan uses duty-cycle control or can
+    only be turned on and off, or -1 if unknown</register-use>
+ <register-use number="6">Pointer to a table of words describing the supported
+    <reference type='subsection' name='Speed'>speeds</reference>, terminated by a -1 word, or 0 if arbitrary
+    speeds (constrained by the accuracy) may be used.</register-use>
+</exit>
+
+<use>
+<p>This SWI is used to return information about a specific fan. The returned parameters are the same as those returned by the FanController_Enumerate call.</p>
+</use>
+
+<related>
+<reference type="swi" name="FanController_Enumerate" />
+<reference type="swi" name="FanController_Register" />
+</related>
+
+</swi-definition>
+
+
+<swi-definition name="FanController_Speed"
+                number="10083"
+                description="Read or set the speed of a fan"
+                irqs="undefined"
+                fiqs="enabled"
+                processor-mode="SVC"
+                re-entrant="no">
+
+<entry>
+ <register-use number="0">Fan identifier to read or set</register-use>
+ <register-use number="1"><reference type='subsection' name='Speed'>Speed</reference> to set the fan to, or -1 to read the current speed</register-use>
+</entry>
+<exit>
+ <register-use number="0" state='preserved'/>
+ <register-use number="1">Current speed when reading the speed, or the selected speed if setting the speed</register-use>
+</exit>
+
+<use>
+<p>This SWI is used to read or set the speed of the fan. It is an error to attempt to select one of the negative
+    values for the fan speed (which indicate errors). Selecting a fan speed which is not one of the valid
+    speeds for the fan may select the closest speed which can be achieved.</p>
+</use>
+
+<related>
+<!-- <reference type="vector" name="BingleV" /> -->
+</related>
+
+</swi-definition>
+
+<swi-definition name="FanController_Configure"
+                number="10084"
+                description="Configure the operation of the fan"
+                irqs="undefined"
+                fiqs="enabled"
+                processor-mode="SVC"
+                re-entrant="no">
+
+<entry>
+ <register-use number="0">Fan identifier to configure</register-use>
+ <register-use number="1"><p>Reason code for configuring the fan:</p>
+    <p>
+    <value-table>
+        <value number="0"><reference type="swi" name="FanController_Configure" reason="0" use-description='yes'/></value>
+        <value number="1"><reference type="swi" name="FanController_Configure" reason="1" use-description='yes'/></value>
+    </value-table>
+    </p>
+ </register-use>
+ <register-use number="2">Parameter to configure</register-use>
+</entry>
+<exit>
+ <register-use number="0" state='preserved'/>
+ <register-use number="1" state='preserved'/>
+ <register-use number="2">Result parameter</register-use>
+</exit>
+
+<use>
+<p>This SWI is used to configure the fan beyond the basic fan speed.
+   Consult the individual reason codes for more detail on the operation.</p>
+</use>
+
+<related>
+<!-- <reference type="vector" name="BingleV" /> -->
+</related>
+
+</swi-definition>
+
+<swi-definition name="FanController_Configure"
+                number="10084"
+                reason="0"
+                reasonname="ControlMode"
+                description="Configure the type of control of the fan"
+                irqs="undefined"
+                fiqs="enabled"
+                processor-mode="SVC"
+                re-entrant="no">
+
+<entry>
+ <register-use number="0">Fan identifier to configure</register-use>
+ <register-use number="1">Reason code (0)</register-use>
+ <register-use number="2"><reference type='subsection' name='Control mode'/> or -1 to read the control
+    mode</register-use>
+
+</entry>
+<exit>
+ <register-use number="0" state='preserved'/>
+ <register-use number="1" state='preserved'/>
+ <register-use number="2">Current control mode</register-use>
+</exit>
+
+<use>
+<p>This SWI is used to configure how the fan speed is controlled. When under manual control,
+    the fan remains at the speed set. When under automatic control, the fan reacts to the
+    system to control its speed. The manner in which it detects its needs is implementation
+    defined.</p>
+</use>
+
+<related>
+  <reference type="swi" name="FanController_Configure" />
+</related>
+
+</swi-definition>
+
+<swi-definition name="FanController_Configure"
+                number="10084"
+                reason="1"
+                reasonname="ChangeLocation"
+                description="Change the location identifier reported by the fan"
+                irqs="undefined"
+                fiqs="enabled"
+                processor-mode="SVC"
+                re-entrant="no">
+
+<entry>
+ <register-use number="0">Fan identifier to configure</register-use>
+ <register-use number="1">Reason code (1)</register-use>
+ <register-use number="2">New <reference type='subsection' name='Location identifier'>location identifier</reference>
+    for this fan</register-use>
+</entry>
+<exit>
+ <register-use number="0" state='preserved'/>
+ <register-use number="1" state='preserved'/>
+ <register-use number="2">New location identifier</register-use>
+</exit>
+
+<use>
+<p>This SWI is used to change the location reported by the fan. The location identifier is purely informational,
+   but it may be useful to allow the user to change the location, particularly in fans whose location
+   is configurable, or for which the interface to which they are connected has no means of determining a
+   location. For example, a serial controlled fan might be fitted in many locations in a chassis which would
+   not be identifiable to the driver.</p>
+</use>
+
+<related>
+  <reference type="swi" name="FanController_Configure" />
+</related>
+
+</swi-definition>
+
+<swi-definition name="FanController_Register"
+                number="10090"
+                description="Register a fan with FanController"
+                irqs="undefined"
+                fiqs="enabled"
+                processor-mode="SVC"
+                re-entrant="no">
+
+<entry>
+ <register-use number="0">Pointer to driver code entry point</register-use>
+ <register-use number="1">Workspace value to pass in R12 to the entry point</register-use>
+ <register-use number="2"><reference type='subsection' name='Location identifier'>Location identifier</reference>
+    for this fan</register-use>
+ <register-use number="3"><reference type='subsection' name='Capability flags'>Capability flags</reference>
+    for this fan</register-use>
+ <register-use number="4">Pointer to the provider name for this fan</register-use>
+ <register-use number="5">Speed accuracy, in RPM, or values 1-100 for duty-cycle control,
+    or 0 for unknown accuracy</register-use>
+ <register-use number="6">Maximum supported speed in RPM, or 100 if fan uses duty-cycle control or can
+    only be turned on and off, or -1 if unknown</register-use>
+ <register-use number="7">Pointer to a table of words describing the supported
+    <reference type='subsection' name='Speed'>speeds</reference>, terminated by a -1 word, or 0 if arbitrary
+    speeds (constrained by the accuracy) may be used.</register-use>
+</entry>
+<exit>
+ <register-use number="0">Fan identifier assigned to this fan</register-use>
+</exit>
+
+<use>
+<p>This SWI is used to register a new fan with the FanController module. The fan will be announced
+using <reference type='service' name='FanController_FanChanged'/>. The fan will appear
+in the list of enumerated fans, and may be controlled once this call has returned.</p>
+</use>
+
+<related>
+ <reference type="swi" name="FanController_Deregister" />
+ <reference type="service" name="FanController_FanChanged" />
+ <reference type="entry" name="FanDriver" />
+ <reference type="error" name="RegisterFailed" />
+</related>
+
+</swi-definition>
+
+<swi-definition name="FanController_Deregister"
+                number="10091"
+                description="Deregister a fan with FanController"
+                irqs="undefined"
+                fiqs="enabled"
+                processor-mode="SVC"
+                re-entrant="no">
+
+<entry>
+ <register-use number="0">Fan identifier to deregister</register-use>
+</entry>
+<exit>
+ <register-use number="0" state='preserved'/>
+</exit>
+
+<use>
+<p>This SWI is used to deregister a new fan from the FanController module. The fan's removal will be announced
+using <reference type='service' name='FanController_FanChanged'/>.</p>
+</use>
+
+<related>
+ <reference type="swi" name="FanController_Register" />
+ <reference type="service" name="FanController_FanChanged" />
+</related>
+
+</swi-definition>
+
+
+</section>
+
+
+
+<section title="Entry points">
+
+<entry-definition name="FanDriver"
+                  description="Entry point for FanDriver operations"
+                  irqs="undefined"
+                  fiqs="undefined"
+                  processor-mode="SVC"
+                  re-entrant="undefined">
+<entry>
+ <register-use number="0"><p>Reason code:</p>
+    <p>
+        <value-table>
+            <value number="0"><reference type="entry" name="FanDriver" reason="0" use-description="yes"/></value>
+            <value number="1"><reference type="entry" name="FanDriver" reason="1" use-description="yes"/></value>
+            <value number="2"><reference type="entry" name="FanDriver" reason="2" use-description="yes"/></value>
+            <value number="3"><reference type="entry" name="FanDriver" reason="3" use-description="yes"/></value>
+            <value number="4"><reference type="entry" name="FanDriver" reason="4" use-description="yes"/></value>
+        </value-table>
+    </p>
+ </register-use>
+ <register-use number="1">Fan identifier to operate on</register-use>
+ <register-use number="2">Location identifier of the fan</register-use>
+ <register-use number="3-9">Dependant on reason code</register-use>
+</entry>
+
+<exit>
+ <register-use number="0">Preserved if recognised, or -1 if reason code is not recognised</register-use>
+ <register-use number="1-9">Dependant on reason code</register-use>
+</exit>
+
+<use>
+<p>The FanDriver entry point is called by the FanController module to perform operations on the Fan.
+Where possible, the FanController will attempt to report on invalid values supplied to its SWIs before
+calling the FanDriver module.</p>
+</use>
+
+<related>
+ <reference type="swi" name="FanController_Register" />
+</related>
+</entry-definition>
+
+<entry-definition name="FanDriver"
+                  reason="0"
+                  reasonname="GetSpeed"
+                  description="Read the speed of the fan"
+                  irqs="undefined"
+                  fiqs="undefined"
+                  processor-mode="SVC"
+                  re-entrant="undefined">
+<entry>
+ <register-use number="0">Reason code (0)</register-use>
+ <register-use number="1">Fan identifier to operate on</register-use>
+ <register-use number="2">Location identifier of the fan</register-use>
+</entry>
+
+<exit>
+ <register-use number="0" state='preserved'/>
+ <register-use number="3"><reference type='subsection' name='Speed'>Fan speed</reference></register-use>
+</exit>
+
+<use>
+<p>This FanDriver entry point is called to read the current fan speed. The fan driver should return the
+speed of the fan, or one of the error codes.</p>
+</use>
+
+<related>
+ <reference type="swi" name="FanController_Speed" />
+</related>
+</entry-definition>
+
+<entry-definition name="FanDriver"
+                  reason="1"
+                  reasonname="SetSpeed"
+                  description="Set the speed of the fan"
+                  irqs="undefined"
+                  fiqs="undefined"
+                  processor-mode="SVC"
+                  re-entrant="undefined">
+<entry>
+ <register-use number="0">Reason code (1)</register-use>
+ <register-use number="1">Fan identifier to operate on</register-use>
+ <register-use number="2">Location identifier of the fan</register-use>
+ <register-use number="3"><reference type='subsection' name='Speed'>Fan speed</reference></register-use>
+</entry>
+
+<exit>
+ <register-use number="0" state='preserved'/>
+ <register-use number="3"><reference type='subsection' name='Speed'>Fan speed</reference></register-use>
+</exit>
+
+<use>
+<p>This FanDriver entry point is called to set the current fan speed. The fan driver should return the
+speed of the fan that was actually selected, or one of the error codes. The speed will have been filtered
+by the FanController module to remove invalid values.</p>
+
+<p>This entry point will not be called if the fan does not support manual speed setting.</p>
+</use>
+
+<related>
+ <reference type="swi" name="FanController_Speed" />
+</related>
+</entry-definition>
+
+
+<entry-definition name="FanDriver"
+                  reason="2"
+                  reasonname="GetControlMode"
+                  description="Read the control mode for the fan"
+                  irqs="undefined"
+                  fiqs="undefined"
+                  processor-mode="SVC"
+                  re-entrant="undefined">
+<entry>
+ <register-use number="0">Reason code (2)</register-use>
+ <register-use number="1">Fan identifier to operate on</register-use>
+ <register-use number="2">Location identifier of the fan</register-use>
+</entry>
+
+<exit>
+ <register-use number="3"><reference type='subsection' name='Control mode'/></register-use>
+</exit>
+
+<use>
+<p>This FanDriver entry point is called to read the current control mode for the fan. If the control mode
+cannot be changed, this entry point will not be called.</p>
+</use>
+
+<related>
+ <reference type="swi" name="FanController_Configure" reason='0' />
+</related>
+</entry-definition>
+
+
+<entry-definition name="FanDriver"
+                  reason="3"
+                  reasonname="SetControlMode"
+                  description="Set the control mode for the fan"
+                  irqs="undefined"
+                  fiqs="undefined"
+                  processor-mode="SVC"
+                  re-entrant="undefined">
+<entry>
+ <register-use number="0">Reason code (3)</register-use>
+ <register-use number="1">Fan identifier to operate on</register-use>
+ <register-use number="2">Location identifier of the fan</register-use>
+ <register-use number="3"><reference type='subsection' name='Control mode'/></register-use>
+</entry>
+
+<exit>
+ <register-use number="3"><reference type='subsection' name='Control mode'/></register-use>
+</exit>
+
+<use>
+<p>This FanDriver entry point is called to set the control mode for the fan. If the control mode
+cannot be changed, this entry point will not be called.</p>
+</use>
+
+<related>
+ <reference type="swi" name="FanController_Configure" reason='0' />
+</related>
+</entry-definition>
+
+<entry-definition name="FanDriver"
+                  reason="4"
+                  reasonname="SetLocation"
+                  description="Set the location for the fan"
+                  irqs="undefined"
+                  fiqs="undefined"
+                  processor-mode="SVC"
+                  re-entrant="undefined">
+<entry>
+ <register-use number="0">Reason code (4)</register-use>
+ <register-use number="1">Fan identifier to operate on</register-use>
+ <register-use number="2">Location identifier of the fan</register-use>
+ <register-use number="3"><reference type='subsection' name='Location identifier'>New location identifier</reference></register-use>
+</entry>
+
+<exit>
+ <register-use number="3"><p>Flag to indicate whether the change was allowed:</p>
+    <p>
+        <value-table>
+            <value number="0">Set location ok</value>
+            <value number="-1">Set location was invalid</value>
+        </value-table>
+    </p>
+ </register-use>
+</exit>
+
+<use>
+<p>This FanDriver entry point is called to request that the fan's location be changed. The
+driver can decide whether the new location is reasonable or not and respond appropriately. For
+example, a Fan driver for a CPU fan might reject changes to a device which is not a CPU, or
+a driver for a chassis fan which may be placed at the front or rear may only allow those two
+locations.</p>
+</use>
+
+<related>
+ <reference type="swi" name="FanController_Configure" reason='1' />
+</related>
+</entry-definition>
+
+</section>
+
+
+<section title="Error messages">
+
+<error-definition name="BadFan"
+                  number="10040"
+                  description="Invalid fan identifier to FanController"
+                  >
+
+<use>
+<p>This error is returned when a fan identifier has been supplied which is not known.</p>
+</use>
+
+<related>
+ <reference type="swi" name="FanController_Speed" />
+ <reference type="swi" name="FanController_Configure" />
+ <reference type="swi" name="FanController_Deregister" />
+</related>
+
+</error-definition>
+
+<error-definition name="BadConfigure"
+                  number="10041"
+                  description="Invalid FanController_Configure reason code"
+                  >
+
+<use>
+<p>This error is returned when an invalid reason code is supplied to FanController_Configure.</p>
+</use>
+
+<related>
+ <reference type="swi" name="FanController_Configure" />
+</related>
+
+</error-definition>
+
+<error-definition name="BadControlMode"
+                  number="10042"
+                  description="Invalid control mode supplied to FanController_Configure 0"
+                  >
+
+<use>
+<p>This error is returned when an invalid control mode is supplied for a fan to FanController_Configure.</p>
+</use>
+
+<related>
+ <reference type="swi" name="FanController_Configure" reason="0"/>
+</related>
+
+</error-definition>
+
+<error-definition name="RegisterFailed"
+                  number="10043"
+                  description="Registration of fan could not be performed"
+                  >
+
+<use>
+<p>This error is returned when the registration of a fan failed. This might be because there is insufficient memory to hold the registration, or because a limit has been reached on the fans.</p>
+</use>
+
+<related>
+ <reference type="swi" name="FanController_Register"/>
+</related>
+
+</error-definition>
+
+<error-definition name="InitFailed"
+                  number="10044"
+                  description="Initialisation of the module failed"
+                  >
+
+<use>
+<p>An error occured during module initialisation which could not be recovered from.</p>
+</use>
+
+<related>
+</related>
+
+</error-definition>
+
+<error-definition name="CannotSetSpeed"
+                  number="10050"
+                  description="Fan speed request cannot be met"
+                  >
+
+<use>
+<p>This error is returned when FanController_SetSpeed cannot select the speed requested. This may happen if the speed requested was not valid, or is outside the range supported by the fan.</p>
+</use>
+
+<related>
+ <reference type="swi" name="FanController_Speed"/>
+</related>
+
+</error-definition>
+
+<error-definition name="CannotSetLocation"
+                  number="10051"
+                  description="Fan speed request cannot be met"
+                  >
+
+<use>
+<p>This error is returned when FanController_Configure 1 cannot change the location of the fan. This might be returned if the driver knows that the fan only exists in one location, and thus it cannot be repositioned.</p>
+</use>
+
+<related>
+ <reference type="swi" name="FanController_Configure" reason="1"/>
+</related>
+
+</error-definition>
+
+</section>
+
+
+
+<section title="*Commands">
+<command-definition name="FansInfo"
+                    description="List the fans registered with FanController">
+
+<syntax>
+</syntax>
+
+<use>
+<p>The *FansInfo command is used to display a list of the fans that are registered with FanController and
+    their current state.</p>
+</use>
+
+<example>
+<command>*FansInfo</command>
+<systemoutput>
+#1  FArgoN      Chassis (front)         100%
+#2  DeskPi      CPU                     50%
+</systemoutput>
+</example>
+
+
+<related>
+ <reference type="swi" name="FanController_Enumerate" />
+</related>
+
+</command-definition>
+
+</section>
+
+<section title="Examples">
+
+<subsection title="List the fans registered with FanContrller">
+<p>
+<extended-example type='basic'>
+REM List the fans we know about
+fan_id% = 0
+REPEAT
+    SYS "FanController_Enumerate", fan_id%,,,"" TO fan_id%, location_id%, capabilities%, provider$, accuracy%, max%, speeds%
+    IF fan_id% &lt;&gt; -1 THEN
+        PRINT"FanID:        ";fan_id%
+        PRINT"Location:     &amp;";~location_id%
+        PRINT"Capabilities: &amp;";~capabilities%
+        PRINT"Provider:     ";provider$
+        PRINT"Accuracy:     ";accuracy%
+        PRINT"Max speed:    ";max%
+        IF speeds% THEN
+            PRINT"Supported speeds:"
+            ofs% = 0
+            WHILE speeds%!ofs% &lt;&gt; -1
+                PRINT"              ";speeds%!ofs%
+                ofs% += 4
+            ENDWHILE
+        ENDIF
+        PRINT
+    ENDIF
+UNTIL fan_id% = -1
+</extended-example>
+</p>
+</subsection>
+</section>
+
+</chapter>
+
+<!-- MetaData -->
+<meta>
+ <maintainer>
+  <email name="Gerph" address="gerph@gerph.org" />
+ </maintainer>
+ <disclaimer>
+    <p>
+        &copy; Gerph, 2021.
+    </p>
+ </disclaimer>
+
+ <history>
+  <revision number="1" author="Gerph" date="14 Nov 2020" title="Initial version">
+    <change>Initial stab at defining an API for a single fan.</change>
+  </revision>
+  <revision number="2" author="Gerph" date="13 Jan 2021" title="Registration interface">
+    <change>Refactored to allow multiple fan driver registrations.</change>
+  </revision>
+ </history>
+
+</meta>
+</riscos-prm>
