@@ -74,6 +74,8 @@ typedef enum fanlocation_e {
 #define FanCapability_SupportsAutomatic (1<<1)
 #define FanCapability_SupportsMove (1<<2)
 #define FanCapability_CanFail (1<<3)
+#define FanCapability_Type_Shift 28
+#define FanCapability_Type_Mask 15
 
 typedef enum fancapability_type_e {
     FanCapability_Type_Fan = 0,
@@ -82,8 +84,6 @@ typedef enum fancapability_type_e {
     FanCapability_Type_Liquid = 3
 } fancapability_type_t;
 
-#define FanCapability_Type_Shift 28
-#define FanCapability_Type_Mask 15
 
 // Fan state
 #define FanState_OK 0
@@ -137,6 +137,7 @@ typedef enum fanconfigure_reason_e {
 #define ErrorNumber_CannotSetLocation (ErrorBase_FanController + 17)
 
 // SWI numbers
+#ifndef FanController_Version
 #define FanController_0 (0x10080)
 #define FanController_Version (SWIFanController_0 + 0)
 #define FanController_Enumerate (SWIFanController_0 + 1)
@@ -145,5 +146,6 @@ typedef enum fanconfigure_reason_e {
 #define FanController_Configure (SWIFanController_0 + 4)
 #define FanController_Register (SWIFanController_0 + 16)
 #define FanController_Deregister (SWIFanController_0 + 17)
+#endif
 
 #endif

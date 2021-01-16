@@ -155,7 +155,7 @@ int fan_setspeed(fan_t *fan, int speed)
 fancontrolmode_t fan_getcontrol(fan_t *fan)
 {
     _kernel_oserror *err;
-    int mode;
+    fancontrolmode_t  mode;
 
     /* FIXME: If it's not automatic, we can only return manual */
 
@@ -182,7 +182,7 @@ fancontrolmode_t fan_setcontrol(fan_t *fan, fancontrolmode_t mode)
 {
     _kernel_oserror *err;
 
-    /* FIXME Validate mode selection */
+    /* FIXME: Validate mode selection */
     err = _callx(fan->driver_code, fan->driver_ws,
                  _INR(0, 3)|_OUT(3),
                  FanDriver_SetControlMode, fan->fan_id, fan->location_id, mode,

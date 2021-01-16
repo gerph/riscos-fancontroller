@@ -42,7 +42,14 @@ error-base: &10040
 ; so manually in your C code, and is less likely to pollute error number
 ; space. The number is optional, and if omitted will be allocated from the
 ; error chunk.
-;error-identifiers: err_Silly(&1234,"Silly")
+error-identifiers: \
+    err_BadFan("Bad fan identifier to FanController") \
+    err_BadConfigure("Bad configure reason to FanController") \
+    err_BadControlMode("Bad control mode for fan supplied to FanController") \
+    err_RegisterFailed("Fan registration failed") \
+    err_InitFailed("FanController initialisation failed") \
+    err_CannotSetSpeed(&10050, "Cannot set fan speed") \
+    err_CannotSetLocation(&10051, "Cannot change location of fan")
 
 ; When the module is initialised, this routine will be entered. You should
 ; be very careful to initialise your module safely. If anything fails, you
@@ -87,6 +94,19 @@ swi-decoding-table: FanController Version/SWI_Version \
                                   15 \
                                   Register/SWI_Register \
                                   Deregister/SWI_Deregister
+
+; Generic veneers are used to provide a simple C environment for SVC and IRQ
+; modes. You should register the Entry routine as the external interface (ie
+; provide it as the code address to call). The Handler routine will be
+; called from this. Parameters for the veneer may be specified in brackets
+; in the same form as command keywords :
+;   ({<field>: <value>})
+; Field names:
+;   private-word: <register> Private word register
+;   carry-capable:           Veneer is capable of handling returning of the
+;                            carry flag
+generic-veneers: StartupCallback_Entry/StartupCallback_Handler
+
 
 ; The command table is one of the more complex fields in the CMHG file. The
 ; first entry is the routine to call to process the commands as they arrive.

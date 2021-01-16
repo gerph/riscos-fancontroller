@@ -8,9 +8,36 @@
 #include <stdio.h>
 
 #include "kernel.h"
+#include "swis.h"
 
 #include "modhead.h"
 #include "commands.h"
+#include "fans.h"
+#include "fan.h"
+
+/* API version we understand */
+#define API_VERSION (100)
+
+
+/*************************************************** Gerph *********
+ Function:      announce
+ Description:   Announce the startup or death of the module
+ Parameters:    started = 1 for starting, 0 for dying
+ Returns:       none
+ ******************************************************************/
+void announce(int started)
+{
+    if (started)
+    {
+        _swix(OS_ServiceCall, _INR(0, 1),
+                              API_VERSION, Service_FanControllerStarted);
+    }
+    else
+    {
+        _swix(OS_ServiceCall, _IN(1),
+                              Service_FanControllerDying);
+    }
+}
 
 
 /***************************************************************************
@@ -27,7 +54,13 @@
  **************************************************************************/
 _kernel_oserror *Mod_Init(const char *tail, int podule_base, void *pw)
 {
-    printf("Module FanController initialised\n");
+    if (fans_init())
+    {
+        /* Failed to start up? */
+        return err_InitFailed;
+    }
+
+    _swix(OS_AddCallBack, _INR(0, 1), StartupCallback_Entry, pw);
     return NULL;
 }
 
@@ -46,7 +79,23 @@ _kernel_oserror *Mod_Init(const char *tail, int podule_base, void *pw)
  **************************************************************************/
 _kernel_oserror *Mod_Final(int fatal, int podule_base, void *pw)
 {
-    printf("Module FanController dying\n");
+    _swix(OS_RemoveCallBack, _INR(0, 1), StartupCallback_Entry, pw);
+    fans_final();
+    return NULL;
+}
+
+/***************************************************************************
+ * Function:     StartupCallback_Handler
+ * Description:  Generic handler function
+ * Parameters:   r  = pointer to register block on entry
+ *               pw = private word for module
+ * On exit:      Update r to alter return values
+ *               Return NULL to return with V clear
+ *               Return an error pointer to set V and r0
+ **************************************************************************/
+_kernel_oserror *StartupCallback_Handler(_kernel_swi_regs *r, void *pw)
+{
+    announce(1);
     return NULL;
 }
 
@@ -89,102 +138,286 @@ _kernel_oserror *Mod_Command(const char *arg_string, int argc, int number,
  Description:   Return version number of the API we conform to
  Parameters:    number = SWI number
                 r -> registers block on entry for update
+                    <= r0   = API version number
                 pw -> module private word
  Returns:       pointer to an error block if failed
                 NULL if successful
  ******************************************************************/
 _kernel_oserror *SWI_Version(int number, _kernel_swi_regs *r, void *pw)
 {
-    /* FIXME: Not implemented */
+    r->r[0] = API_VERSION;
     return NULL;
 }
 
 /*************************************************** Gerph *********
- Function:      SWI_Version
- Description:   Return version number of the API we conform to
+ Function:      return_faninfo
+ Description:   Return the information about a single fan
+ Parameters:    fan -> fan to return
+                regs-> the registers to populate
+ Returns:       none
+ ******************************************************************/
+void return_faninfo(fan_t *fan, _kernel_swi_regs *regs)
+{
+    regs->r[0] = (int)fan->fan_id;
+    regs->r[1] = (int)fan->location_id;
+    regs->r[2] = (int)fan->capabilities;
+    regs->r[3] = (int)fan->provider;
+    regs->r[4] = (int)fan->accuracy;
+    regs->r[5] = (int)fan->maximum;
+    regs->r[6] = (int)fan->speeds;
+}
+
+
+/*************************************************** Gerph *********
+ Function:      SWI_Enumerate
+ Description:   Enumerate the fans that we have registered
  Parameters:    number = SWI number
                 r -> registers block on entry for update
+                    =>  R0 = first call value, or 0 to start
+                    <=  R0 = -1 if not more, fan id
+                        R1 = Location identifier for this fan
+                        R2 = Capability flags for this fan
+                        R3 = Pointer to the provider name for this fan
+                        R4 = Speed accuracy, in RPM, or values 1-100 for
+                             duty-cycle control, or 0 for unknown accuracy
+                        R5 = Maximum supported speed in RPM, or 100 if fan
+                             uses duty-cycle control or can only be turned
+                             on and off, or -1 if unknown
+                        R6 = Pointer to a table of words describing the
+                             supported speeds, terminated by a -1 word,
+                             or 0 if arbitrary speeds (constrained by the
+                             accuracy) may be used.
                 pw -> module private word
  Returns:       pointer to an error block if failed
                 NULL if successful
  ******************************************************************/
 _kernel_oserror *SWI_Enumerate(int number, _kernel_swi_regs *r, void *pw)
 {
-    /* FIXME: Not implemented */
+    int fan_id = r->r[0];
+    fan_t *fan = fans_findfan_after(fan_id);
+    if (fan == NULL)
+    {
+        r->r[0] = -1;
+    }
+    else
+    {
+        return_faninfo(fan, r);
+    }
+
     return NULL;
 }
 
 /*************************************************** Gerph *********
- Function:      SWI_Version
- Description:   Return version number of the API we conform to
+ Function:      SWI_Info
+ Description:   Return information about a specific fan.
  Parameters:    number = SWI number
                 r -> registers block on entry for update
+                    =>  R0 = fan id to return
+                    <=  R0 preserved
+                        R1 = Location identifier for this fan
+                        R2 = Capability flags for this fan
+                        R3 = Pointer to the provider name for this fan
+                        R4 = Speed accuracy, in RPM, or values 1-100 for
+                             duty-cycle control, or 0 for unknown accuracy
+                        R5 = Maximum supported speed in RPM, or 100 if fan
+                             uses duty-cycle control or can only be turned
+                             on and off, or -1 if unknown
+                        R6 = Pointer to a table of words describing the
+                             supported speeds, terminated by a -1 word,
+                             or 0 if arbitrary speeds (constrained by the
+                             accuracy) may be used.
                 pw -> module private word
  Returns:       pointer to an error block if failed
                 NULL if successful
  ******************************************************************/
 _kernel_oserror *SWI_Info(int number, _kernel_swi_regs *r, void *pw)
 {
-    /* FIXME: Not implemented */
+    int fan_id = r->r[0];
+    fan_t *fan = fans_findfan(fan_id);
+    if (fan == NULL)
+        return err_BadFan;
+
+    return_faninfo(fan, r);
+
     return NULL;
 }
 
 /*************************************************** Gerph *********
- Function:      SWI_Version
+ Function:      SWI_Speed
  Description:   Return version number of the API we conform to
  Parameters:    number = SWI number
                 r -> registers block on entry for update
+                    =>  R0 = fan id to return
+                        R1 = speed, or -1 to read the current speed
+                    <=  R1 = current speed, or selected speed
                 pw -> module private word
  Returns:       pointer to an error block if failed
                 NULL if successful
  ******************************************************************/
 _kernel_oserror *SWI_Speed(int number, _kernel_swi_regs *r, void *pw)
 {
-    /* FIXME: Not implemented */
+    int fan_id = r->r[0];
+    int speed = r->r[1];
+    fan_t *fan = fans_findfan(fan_id);
+    if (fan == NULL)
+        return err_BadFan;
+
+    if (speed == -1)
+    {
+        /* Read the speed */
+        speed = fan_getspeed(fan);
+    }
+    else
+    {
+        /* Set the speed */
+        speed = fan_setspeed(fan, speed);
+        if (speed < 0)
+            return err_CannotSetSpeed;
+    }
+
+    r->r[1] = speed;
+
     return NULL;
 }
 
 /*************************************************** Gerph *********
- Function:      SWI_Version
+ Function:      SWI_Configure
  Description:   Return version number of the API we conform to
  Parameters:    number = SWI number
                 r -> registers block on entry for update
+                    => R0 = Fan identifier to configure
+                       R1 = Reason code
+                       R2 = parameter
+                    <= R2 = result
                 pw -> module private word
  Returns:       pointer to an error block if failed
                 NULL if successful
  ******************************************************************/
 _kernel_oserror *SWI_Configure(int number, _kernel_swi_regs *r, void *pw)
 {
-    /* FIXME: Not implemented */
+    int fan_id = r->r[0];
+    int reason = r->r[1];
+    int param = r->r[2];
+    fan_t *fan = fans_findfan(fan_id);
+    if (fan == NULL)
+        return err_BadFan;
+
+    switch (reason)
+    {
+        case FanController_Configure_Control:
+            {
+                fancontrolmode_t mode = (fancontrolmode_t)param;
+                if (param == -1)
+                {
+                    mode = fan_getcontrol(fan);
+                }
+                else
+                {
+                    mode = fan_setcontrol(fan, mode);
+                    if (mode < 0)
+                        return err_BadControlMode;
+                }
+
+                r->r[2] = mode;
+            }
+            break;
+
+        case FanController_Configure_Location:
+            {
+                unsigned long new_location_id = (unsigned long)param;
+                fansetlocation_result_t result;
+                result = fan_setlocation(fan, new_location_id);
+                if (result != FanSetLocation_OK)
+                    return err_CannotSetLocation;
+
+                r->r[2] = result;
+            }
+            break;
+
+        default:
+            return err_BadConfigure;
+    }
+
     return NULL;
 }
 
 /*************************************************** Gerph *********
- Function:      SWI_Version
+ Function:      SWI_Register
  Description:   Return version number of the API we conform to
  Parameters:    number = SWI number
                 r -> registers block on entry for update
+                    => R0 = Pointer to driver code entry point
+                       R1 = Workspace value to pass in R12 to the entry point
+                       R2 = Location identifier for this fan
+                       R3 = Capability flags for this fan
+                       R4 = Pointer to the provider name for this fan
+                       R5 = Speed accuracy, in RPM, or values 1-100 for
+                            duty-cycle control, or 0 for unknown accuracy
+                       R6 = Maximum supported speed in RPM, or 100 if fan
+                            uses duty-cycle control or can only be turned on
+                            and off, or -1 if unknown
+                       R7 = Pointer to a table of words describing the
+                            supported speeds, terminated by a -1 word,
+                            or 0 if arbitrary speeds (constrained by the
+                            accuracy) may be used.
+                    <= R0 = fan identifier allocated
                 pw -> module private word
  Returns:       pointer to an error block if failed
                 NULL if successful
  ******************************************************************/
 _kernel_oserror *SWI_Register(int number, _kernel_swi_regs *r, void *pw)
 {
-    /* FIXME: Not implemented */
+    void *driver_code = (void *)r->r[0];
+    void *driver_ws = (void *)r->r[1];
+    unsigned long location_id = (unsigned long)r->r[2];
+    unsigned long capabilities = (unsigned long)r->r[3];
+    const char *provider = (const char *)r->r[4];
+    unsigned long accuracy = (unsigned long)r->r[5];
+    unsigned long maximum = (unsigned long)r->r[6];
+    unsigned long *speeds = (unsigned long *)r->r[7];
+
+    fan_t *fan;
+    fan = fan_create(location_id,
+                     capabilities,
+                     provider,
+                     accuracy,
+                     speeds,
+                     maximum,
+                     driver_code,
+                     driver_ws);
+    if (fan == NULL)
+        return err_RegisterFailed;
+
+    if (fans_register(fan))
+    {
+        /* Failed to register */
+        fan_destroy(fan);
+        return err_RegisterFailed;
+    }
+
+    r->r[0] = fan->fan_id;
+
     return NULL;
 }
 
 /*************************************************** Gerph *********
- Function:      SWI_Version
+ Function:      SWI_Deregister
  Description:   Return version number of the API we conform to
  Parameters:    number = SWI number
                 r -> registers block on entry for update
+                    => R0 = Fan identifier to deregister
                 pw -> module private word
  Returns:       pointer to an error block if failed
                 NULL if successful
  ******************************************************************/
 _kernel_oserror *SWI_Deregister(int number, _kernel_swi_regs *r, void *pw)
 {
-    /* FIXME: Not implemented */
+    int fan_id = r->r[0];
+
+    if (fans_deregister(fan_id))
+    {
+        return err_BadFan;
+    }
+
     return NULL;
 }
