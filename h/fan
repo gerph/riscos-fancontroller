@@ -1,0 +1,109 @@
+/*******************************************************************
+ * File:        fan
+ * Purpose:     Management of a single fan and its interfaces
+ * Author:      Gerph
+ ******************************************************************/
+
+#ifndef FAN_H
+#define FAN_H
+
+#include "FanController.h"
+
+typedef struct fan_s {
+    struct fan_s *  next;
+
+    int             fan_id;
+    unsigned long   location_id;
+    unsigned long   capabilities;
+    char *          provider;
+    unsigned long   accuracy;
+    unsigned long * speeds;
+    unsigned long   maximum;
+
+    void *driver_code;
+    void *driver_ws;
+} fan_t;
+
+
+/*************************************************** Gerph *********
+ Function:      fan_create
+ Description:   Create a reference to a fan
+ Parameters:    fan_id = fan identifier allocated
+                location_id = location of the fan
+                capabilities = capabilities flags
+                provider -> provider name (will be copied)
+                accuracy = accuracy of the fan speed
+                speeds -> list of supported speeds
+                maximum = maximum speed
+                driver_code -> the code to call for the driver
+                driver_ws -> r12 value for the driver
+ Returns:       pointer to the fan_t, or NULL if failed
+ ******************************************************************/
+fan_t *fan_create(int             fan_id,
+                  unsigned long   location_id,
+                  unsigned long   capabilities,
+                  const char *    provider,
+                  unsigned long   accuracy,
+                  unsigned long * speeds,
+                  unsigned long   maximum,
+                  void *          driver_code,
+                  void *          driver_ws);
+
+/*************************************************** Gerph *********
+ Function:      fan_destroy
+ Description:   Destroy the fan
+ Parameters:    fan-> the fan we're destroying (assumed to already have
+                      been unlinked).
+ Returns:       none
+ ******************************************************************/
+void fan_destroy(fan_t *fan);
+
+
+/*************************************************** Gerph *********
+ Function:      fan_getspeed
+ Description:   Read the speed from the Fan
+ Parameters:    fan -> the fan we're operating on
+ Returns:       fan speed or state
+ ******************************************************************/
+int fan_getspeed(fan_t *fan);
+
+
+/*************************************************** Gerph *********
+ Function:      fan_setspeed
+ Description:   Set the speed of the Fan
+ Parameters:    fan -> the fan we're operating on
+                speed = speed to set
+ Returns:       fan speed or state selected
+ ******************************************************************/
+int fan_setspeed(fan_t *fan, int speed);
+
+
+/*************************************************** Gerph *********
+ Function:      fan_getcontrol
+ Description:   Read the control mode of the fan
+ Parameters:    fan -> the fan we're operating on
+ Returns:       fan control mode
+ ******************************************************************/
+fancontrolmode_t fan_getcontrol(fan_t *fan);
+
+
+/*************************************************** Gerph *********
+ Function:      fan_setcontrol
+ Description:   Set the control mode of the fan
+ Parameters:    fan -> the fan we're operating on
+                mode = the control mode to use
+ Returns:       fan control mode
+ ******************************************************************/
+fancontrolmode_t fan_setcontrol(fan_t *fan, fancontrolmode_t mode);
+
+
+/*************************************************** Gerph *********
+ Function:      fan_setlocation
+ Description:   Set the location of the fan
+ Parameters:    fan -> the fan we're operating on
+                location_id = the location id to select
+ Returns:       fan control mode
+ ******************************************************************/
+fansetlocation_result_t fan_setlocation(fan_t *fan, unsigned long location_id);
+
+#endif

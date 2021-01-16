@@ -26,7 +26,7 @@ typedef enum fantype_e {
     FanType_Device_Radiator = 18,
     FanType_Device_Chassis = 19,
     FanType_Device_External = 32,
-    FanType_Device_Generic = 255,
+    FanType_Device_Generic = 255
 } fantype_t;
 
 // Fan device locations for specific devices
@@ -63,7 +63,7 @@ typedef enum fanlocation_e {
     FanType_Location_External_DeskFan = 64,
     FanType_Location_External_Aircon = 65,
     FanType_Location_External_PizzaOven = 254,
-    FanType_Location_External_Unspecified = 255,
+    FanType_Location_External_Unspecified = 255
 } fanlocation_t;
 
 // Fan speed
@@ -79,7 +79,7 @@ enum fancapability_type_e {
     FanCapability_Type_Fan = 0,
     FanCapability_Type_Piezoelectric = 1,
     FanCapability_Type_Peltier = 2,
-    FanCapability_Type_Liquid = 3,
+    FanCapability_Type_Liquid = 3
 } fancapability_type_t;
 #define FanCapability_Type_Shift 28
 #define FanCapability_Type_Mask 15
@@ -95,26 +95,27 @@ typedef enum fandriver_reason_e {
     FanDriver_SetSpeed = 1,
     FanDriver_GetControlMode = 2,
     FanDriver_SetControlMode = 3,
-    FanDriver_SetLocation = 4,
+    FanDriver_SetLocation = 4
 } fandriver_reason_t;
 
 // Configuration of the fan control
-typedef enum fancontrol_e
+typedef enum fancontrolmode_e {
+    FanControl_Error = -1,
     FanControl_Manual = 0,
     FanControl_AutomaticPerformance = 1,
-    FanControl_AutomaticNoise = 2,
-} fancontrol_t;
+    FanControl_AutomaticNoise = 2
+} fancontrolmode_t;
 
 // Location change response
 typedef enum fansetlocation_result_e {
     FanSetLocation_OK = 0,
-    FanSetLocation_Invalid = 1,
+    FanSetLocation_Invalid = 1
 } fansetlocation_result_t;
 
 // FanController_Configure reasons
 typedef enum fanconfigure_reason_e {
     FanController_Configure_Control = 0,
-    FanController_Configure_Location = 1,
+    FanController_Configure_Location = 1
 } fanconfigure_reason_t;
 
 // Service calls - NOT registered
@@ -135,13 +136,13 @@ typedef enum fanconfigure_reason_e {
 #define ErrorNumber_CannotSetLocation (ErrorBase_FanController + 17)
 
 // SWI numbers
-#define SWIFanController_0 (0x10080)
-#define SWIFanController_Version (SWIFanController_0 + 0)
-#define SWIFanController_Enumerate (SWIFanController_0 + 1)
-#define SWIFanController_Info (SWIFanController_0 + 2)
-#define SWIFanController_Speed (SWIFanController_0 + 3)
-#define SWIFanController_Configure (SWIFanController_0 + 4)
-#define SWIFanController_Register (SWIFanController_0 + 16)
-#define SWIFanController_Deregister (SWIFanController_0 + 17)
+#define FanController_0 (0x10080)
+#define FanController_Version (SWIFanController_0 + 0)
+#define FanController_Enumerate (SWIFanController_0 + 1)
+#define FanController_Info (SWIFanController_0 + 2)
+#define FanController_Speed (SWIFanController_0 + 3)
+#define FanController_Configure (SWIFanController_0 + 4)
+#define FanController_Register (SWIFanController_0 + 16)
+#define FanController_Deregister (SWIFanController_0 + 17)
 
 #endif

@@ -18,18 +18,18 @@ COMPONENT  = FanController
 #   ${EXP_C_H}.${COMPONENT}SWIs
 # To export to the library in a subdirectory, use an export like:
 #   ${EXP_LIB}.${COMPONENT}.h.myheader
-EXPORTS    = ${EXP_C_H}.${COMPONENT}SWIs
+EXPORTS    = ${EXP_C_H}.${COMPONENT}
 
 # Resources you want to be exported as part of the 'resources' phase of the build
 #RESOURCES  = ${RESDIR}.${COMPONENT}.Messages
 
 # Comma-separated list of paths to use for includes, such as:
 #	<Lib$Dir>.LibName.
-INCLUDES   =
+INCLUDES   = <Lib$Dir>.Asm.
 
 # Space separated list of libraries to link against.
 # (${CLIB} is implicit, unless NOCLIB = yes)
-LIBS       =
+LIBS       = <Lib$Dir>.Asm.o.libAsm
 
 # Space separated list of defines to set, eg -DDEBUG
 CDEFINES   =
@@ -38,7 +38,8 @@ CDEFINES   =
 OBJS       = o.modhead \
 			 o.module \
 			 o.commands \
-
+			 o.fan \
+			 o.str
 
 include CModule
 
@@ -48,11 +49,13 @@ $(OZDIR).module: h.modhead
 # Export rules
 # For any files you export with EXPORTS you may need to include an
 # export rule
-${EXP_C_H}.${COMPONENT}SWIs: cmhg.modhead
-       ${CMHG} ${CMHGFLAGS} -xh $@ cmhg.modhead
+#${EXP_C_H}.${COMPONENT}SWIs: cmhg.modhead
+#       ${CMHG} ${CMHGFLAGS} -xh $@ cmhg.modhead
 # To export bare files you can use the ${CP} command:
 # ${EXP_LIB}.${COMPONENT}.h.myheader: h.myheader
 #        ${CP} $?  $@  ${CPFLAGS}
+${EXP_C_H}.${COMPONENT}: h.${COMPONENT}
+        ${CP} $?  $@  ${CPFLAGS}
 
 # This clean target removes any module header file that was built.
 cleantarget:

@@ -1,0 +1,223 @@
+/*******************************************************************
+ * File:        fan
+ * Purpose:     Management of a single fan and its interfaces
+ * Author:      Gerph
+ ******************************************************************/
+
+#include <stdlib.h>
+#include <string.h>
+
+#include "callx.h"
+
+#include "FanController.h"
+#include "fan.h"
+#include "str.h"
+
+
+/*************************************************** Gerph *********
+ Function:      fan_create
+ Description:   Create a reference to a fan
+ Parameters:    fan_id = fan identifier allocated
+                location_id = location of the fan
+                capabilities = capabilities flags
+                provider -> provider name (will be copied)
+                accuracy = accuracy of the fan speed
+                speeds -> list of supported speeds
+                maximum = maximum speed
+                driver_code -> the code to call for the driver
+                driver_ws -> r12 value for the driver
+ Returns:       pointer to the fan_t, or NULL if failed
+ ******************************************************************/
+fan_t *fan_create(int             fan_id,
+                  unsigned long   location_id,
+                  unsigned long   capabilities,
+                  const char *    provider,
+                  unsigned long   accuracy,
+                  unsigned long * speeds,
+                  unsigned long   maximum,
+                  void *          driver_code,
+                  void *          driver_ws)
+{
+    fan_t *fan;
+
+    fan = calloc(1, sizeof(*fan));
+    if (fan == NULL)
+        goto failed;
+
+    fan->provider = strdup(provider);
+    if (fan->provider == NULL)
+        goto failed;
+
+    fan->fan_id = fan_id;
+    fan->location_id = location_id;
+    fan->capabilities = capabilities;
+    fan->accuracy = accuracy;
+    if (fan->speeds)
+    {
+        int nspeeds;
+        for (nspeeds = 0; speeds[nspeeds] != -1; nspeeds++)
+            ; /* We're just counting, so this is all in the list */
+        fan->speeds = malloc(sizeof(unsigned long) * (nspeeds + 1));
+        if (fan->speeds == NULL)
+            goto failed;
+
+        memcpy(fan->speeds, speeds, sizeof(unsigned long) * (nspeeds + 1));
+    }
+    fan->maximum = maximum;
+    fan->driver_code = driver_code;
+    fan->driver_ws = driver_ws;
+
+    return fan;
+
+failed:
+    if (fan)
+    {
+        if (fan->provider)
+            free(fan->provider);
+        if (fan->speeds)
+            free(fan->speeds);
+        free(fan);
+    }
+    return NULL;
+}
+
+/*************************************************** Gerph *********
+ Function:      fan_destroy
+ Description:   Destroy the fan
+ Parameters:    fan-> the fan we're destroying (assumed to already have
+                      been unlinked).
+ Returns:       none
+ ******************************************************************/
+void fan_destroy(fan_t *fan)
+{
+    if (fan->provider)
+        free(fan->provider);
+    if (fan->speeds)
+        free(fan->speeds);
+    free(fan);
+}
+
+
+/*************************************************** Gerph *********
+ Function:      fan_getspeed
+ Description:   Read the speed from the Fan
+ Parameters:    fan -> the fan we're operating on
+ Returns:       fan speed or state
+ ******************************************************************/
+int fan_getspeed(fan_t *fan)
+{
+    _kernel_oserror *err;
+    int speed;
+
+    err = _callx(fan->driver_code, fan->driver_ws,
+                 _INR(0, 2)|_OUT(3),
+                 FanDriver_GetSpeed, fan->fan_id, fan->location_id,
+                 &speed);
+    if (err)
+    {
+        return FanState_Disconnected;
+    }
+    return speed;
+}
+
+
+/*************************************************** Gerph *********
+ Function:      fan_setspeed
+ Description:   Set the speed of the Fan
+ Parameters:    fan -> the fan we're operating on
+                speed = speed to set
+ Returns:       fan speed or state selected
+ ******************************************************************/
+int fan_setspeed(fan_t *fan, int speed)
+{
+    _kernel_oserror *err;
+
+    // FIXME: Validate the speed against those supported - find the closest?
+    // FIXME: Validate against the maximum
+    // FIXME: Apply accuracy to the speed - find the closest?
+
+    err = _callx(fan->driver_code, fan->driver_ws,
+                 _INR(0, 3)|_OUT(3),
+                 FanDriver_SetSpeed, fan->fan_id, fan->location_id, speed,
+                 &speed);
+    if (err)
+    {
+        return FanState_Disconnected;
+    }
+    return speed;
+}
+
+
+/*************************************************** Gerph *********
+ Function:      fan_getcontrol
+ Description:   Read the control mode of the fan
+ Parameters:    fan -> the fan we're operating on
+ Returns:       fan control mode
+ ******************************************************************/
+fancontrolmode_t fan_getcontrol(fan_t *fan)
+{
+    _kernel_oserror *err;
+    int mode;
+
+    /* FIXME: If it's not automatic, we can only return manual */
+
+    err = _callx(fan->driver_code, fan->driver_ws,
+                 _INR(0, 2)|_OUT(3),
+                 FanDriver_GetControlMode, fan->fan_id, fan->location_id,
+                 &mode);
+    if (err)
+    {
+        return FanControl_Error;
+    }
+    return mode;
+}
+
+
+/*************************************************** Gerph *********
+ Function:      fan_setcontrol
+ Description:   Set the control mode of the fan
+ Parameters:    fan -> the fan we're operating on
+                mode = the control mode to use
+ Returns:       fan control mode
+ ******************************************************************/
+fancontrolmode_t fan_setcontrol(fan_t *fan, fancontrolmode_t mode)
+{
+    _kernel_oserror *err;
+
+    /* FIXME Validate mode selection */
+    err = _callx(fan->driver_code, fan->driver_ws,
+                 _INR(0, 3)|_OUT(3),
+                 FanDriver_SetControlMode, fan->fan_id, fan->location_id, mode,
+                 &mode);
+    if (err)
+    {
+        return FanControl_Error;
+    }
+    return mode;
+}
+
+
+/*************************************************** Gerph *********
+ Function:      fan_setlocation
+ Description:   Set the location of the fan
+ Parameters:    fan -> the fan we're operating on
+                location_id = the location id to select
+ Returns:       fan control mode
+ ******************************************************************/
+fansetlocation_result_t fan_setlocation(fan_t *fan, unsigned long location_id)
+{
+    _kernel_oserror *err;
+    /* FIXME: Validate if the can location can be set */
+    int result;
+
+    err = _callx(fan->driver_code, fan->driver_ws,
+                 _INR(0, 3)|_OUT(3),
+                 FanDriver_SetControlMode, fan->fan_id, fan->location_id, location_id,
+                 &result);
+    if (err || result != FanSetLocation_OK)
+    {
+        return FanSetLocation_Invalid;
+    }
+
+    return FanSetLocation_OK;
+}
