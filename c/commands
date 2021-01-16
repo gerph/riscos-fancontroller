@@ -1,0 +1,23 @@
+/*******************************************************************
+ * File:        commands
+ * Purpose:     Implementation of the *Commands
+ * Author:      Gerph
+ ******************************************************************/
+
+#include <stdlib.h>
+#include "kernel.h"
+
+#include "commands.h"
+
+/*************************************************** Gerph *********
+ Function:      Cmd_FansInfo
+ Description:   Display information about the fans
+ Parameters:    none
+ Returns:       pointer to an error block if failed
+                NULL if successful
+ ******************************************************************/
+_kernel_oserror *Cmd_FansInfo(void)
+{
+    /* FIXME: Not implemented */
+    return NULL;
+}
