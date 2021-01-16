@@ -219,3 +219,20 @@ fansetlocation_result_t fan_setlocation(fan_t *fan, unsigned long location_id)
 
     return FanSetLocation_OK;
 }
+
+
+/*************************************************** Gerph *********
+ Function:      fan_announce
+ Description:   Announce the arrival, or leaving, of a fan
+ Parameters:    fan-> the fan to announce
+                started = 1 if started; 0 if dying
+ Returns:       none
+ ******************************************************************/
+void fan_announce(fan_t *fan, int started)
+{
+    _swix(OS_ServiceCall, _INR(0, 2),
+                          fan->fan_id,
+                          Service_FanControllerFanChanged,
+                          started ? Service_FanControllerFanChanged_Added
+                                  : Service_FanControllerFanChanged_Removed);
+}

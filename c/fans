@@ -52,7 +52,6 @@ int fans_final(void)
     return 0;
 }
 
-
 /*************************************************** Gerph *********
  Function:      fans_register
  Description:   Register a fan with the system
@@ -62,7 +61,7 @@ int fans_final(void)
 int fans_register(fan_t *fan)
 {
     fan->fan_id = fans.next_fan_id++;
-    /* FIXME: If we've wrapped this is not sufficient; we need to find a gap - this case is unlikely
+    /* FIXME: If we've wrapped, this is not sufficient; we need to find a gap - this case is unlikely
      *        so I don't care for now.
      */
 
@@ -71,7 +70,8 @@ int fans_register(fan_t *fan)
     /* Attach to the end of the fans list */
     *fans.fanstailp = fan;
 
-    /* FIXME: Issue service that we have a new fan */
+    /* Issue service that we have a new fan */
+    fan_announce(fan, 1);
     return 0;
 }
 
@@ -106,8 +106,11 @@ int fans_deregister(int fan_id)
     }
     *lastp = cur->next; /* unlinks from the list */
 
+    /* Issue service that we have removed a fan */
+    fan_announce(cur, 0);
+
+    /* Finally free the memory */
     fan_destroy(cur);
-    /* FIXME: Issue service that we have removed a fan */
     return 0;
 }
 
