@@ -39,7 +39,8 @@ OBJS       = o.modhead \
 			 o.module \
 			 o.commands \
 			 o.fan \
-			 o.str
+			 o.str \
+			 o.fans
 
 include CModule
 

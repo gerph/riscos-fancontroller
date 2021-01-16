@@ -1,0 +1,75 @@
+/*******************************************************************
+ * File:        fans
+ * Purpose:     Management of multiple fans
+ * Author:      Gerph
+ ******************************************************************/
+
+#ifndef FANS_H
+#define FANS_H
+
+#include "fan.h"
+
+typedef struct fans_s {
+    int         next_fan_id;
+    fan_t *     fans;
+    fan_t **    fanstailp;
+} fans_t;
+
+
+
+/*************************************************** Gerph *********
+ Function:      fans_init
+ Description:   Initialise the fans system
+ Parameters:    none
+ Returns:       0 if successful; 1 if failed
+ ******************************************************************/
+int fans_init(void);
+
+
+/*************************************************** Gerph *********
+ Function:      fans_final
+ Description:   Finalise the fans system
+ Parameters:    none
+ Returns:       0 if successful; 1 if failed
+ ******************************************************************/
+int fans_final(void);
+
+
+/*************************************************** Gerph *********
+ Function:      fans_register
+ Description:   Register a fan with the system
+ Parameters:    fan-> the fan that we're registering
+ Returns:       0 if successful; 1 if failed
+ ******************************************************************/
+int fans_register(fan_t *fan);
+
+
+/*************************************************** Gerph *********
+ Function:      fans_deregister
+ Description:   Deregister a fan from the system
+ Parameters:    fan-> the fan that we're registering
+ Returns:       0 if successful; 1 if failed
+ ******************************************************************/
+int fans_deregister(int fan_id);
+
+
+/*************************************************** Gerph *********
+ Function:      fans_findfan
+ Description:   Find a fan given the fan_id
+ Parameters:    fan_id = fan id to find
+ Returns:       pointer to the fan, if found
+                NULL if not found
+ ******************************************************************/
+fan_t *fans_findfan(int fan_id);
+
+
+/*************************************************** Gerph *********
+ Function:      fans_findfan_after
+ Description:   Find a fan AFTER a given the fan_id
+ Parameters:    fan_id = fan id to find the fan after, or 0 for the first one
+ Returns:       pointer to the next fan, if found
+                NULL if no more fans found
+ ******************************************************************/
+fan_t *fans_findfan_after(int fan_id);
+
+#endif

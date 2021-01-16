@@ -75,12 +75,13 @@ typedef enum fanlocation_e {
 #define FanCapability_SupportsMove (1<<2)
 #define FanCapability_CanFail (1<<3)
 
-enum fancapability_type_e {
+typedef enum fancapability_type_e {
     FanCapability_Type_Fan = 0,
     FanCapability_Type_Piezoelectric = 1,
     FanCapability_Type_Peltier = 2,
     FanCapability_Type_Liquid = 3
 } fancapability_type_t;
+
 #define FanCapability_Type_Shift 28
 #define FanCapability_Type_Mask 15
 

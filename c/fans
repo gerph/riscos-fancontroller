@@ -1,0 +1,156 @@
+/*******************************************************************
+ * File:        fans
+ * Purpose:     Management of multiple fans
+ * Author:      Gerph
+ ******************************************************************/
+
+#include <stdlib.h>
+#include "kernel.h"
+
+#include "fan.h"
+#include "fans.h"
+
+
+static fans_t fans;
+
+
+/*************************************************** Gerph *********
+ Function:      fans_init
+ Description:   Initialise the fans system
+ Parameters:    none
+ Returns:       0 if successful; 1 if failed
+ ******************************************************************/
+int fans_init(void)
+{
+    fans.next_fan_id = 1;
+    fans.fans = NULL;
+    fans.fanstailp = &fans.fans;
+
+    return 0;
+}
+
+
+/*************************************************** Gerph *********
+ Function:      fans_final
+ Description:   Finalise the fans system
+ Parameters:    none
+ Returns:       0 if successful; 1 if failed
+ ******************************************************************/
+int fans_final(void)
+{
+    fan_t *fan = fans.fans;
+    fans.fans = NULL;
+    fans.fanstailp = &fans.fans;
+
+    while (fan);
+    {
+        fan_t *next = fan->next;
+        fan_destroy(fan);
+        fan = next;
+    }
+
+    return 0;
+}
+
+
+/*************************************************** Gerph *********
+ Function:      fans_register
+ Description:   Register a fan with the system
+ Parameters:    fan-> the fan that we're registering
+ Returns:       0 if successful; 1 if failed
+ ******************************************************************/
+int fans_register(fan_t *fan)
+{
+    fan->fan_id = fans.next_fan_id++;
+    /* FIXME: If we've wrapped this is not sufficient; we need to find a gap - this case is unlikely
+     *        so I don't care for now.
+     */
+
+    fan->next = NULL;
+
+    /* Attach to the end of the fans list */
+    *fans.fanstailp = fan;
+
+    /* FIXME: Issue service that we have a new fan */
+    return 0;
+}
+
+
+/*************************************************** Gerph *********
+ Function:      fans_deregister
+ Description:   Deregister a fan from the system
+ Parameters:    fan-> the fan that we're registering
+ Returns:       0 if successful; 1 if failed
+ ******************************************************************/
+int fans_deregister(int fan_id)
+{
+    fan_t *cur = fans.fans;
+    fan_t **lastp = &fans.fans;
+
+    while (cur && cur->fan_id != fan_id)
+    {
+        lastp = &cur->next;
+        cur = cur->next;
+    }
+    if (cur == NULL)
+    {
+        /* We reached the end of the list without finding the fan - failed */
+        return 1;
+    }
+
+    /* We found the fan in our list; remove it */
+    if (&cur->next == fans.fanstailp)
+    {
+        /* This was the last entry on the list; so move the tail pointer */
+        fans.fanstailp = lastp;
+    }
+    *lastp = cur->next; /* unlinks from the list */
+
+    fan_destroy(cur);
+    /* FIXME: Issue service that we have removed a fan */
+    return 0;
+}
+
+
+/*************************************************** Gerph *********
+ Function:      fans_findfan
+ Description:   Find a fan given the fan_id
+ Parameters:    fan_id = fan id to find
+ Returns:       pointer to the fan, if found
+                NULL if not found
+ ******************************************************************/
+fan_t *fans_findfan(int fan_id)
+{
+    fan_t *cur;
+    for (cur=fans.fans;
+         cur && cur->fan_id == fan_id;
+         cur=cur->next)
+        ; /* Search is in the for loop */
+
+    return cur;
+}
+
+
+/*************************************************** Gerph *********
+ Function:      fans_findfan_after
+ Description:   Find a fan AFTER a given the fan_id
+ Parameters:    fan_id = fan id to find the fan after, or 0 for the first one
+ Returns:       pointer to the next fan, if found
+                NULL if no more fans found
+ ******************************************************************/
+fan_t *fans_findfan_after(int fan_id)
+{
+    fan_t *cur;
+    for (cur=fans.fans;
+         cur;
+         cur=cur->next)
+    {
+        if (fan_id == 0)
+            return cur;
+
+        if (cur->fan_id == fan_id)
+            fan_id = 0;
+    }
+
+    return cur;
+}

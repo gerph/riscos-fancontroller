@@ -28,8 +28,7 @@ typedef struct fan_s {
 /*************************************************** Gerph *********
  Function:      fan_create
  Description:   Create a reference to a fan
- Parameters:    fan_id = fan identifier allocated
-                location_id = location of the fan
+ Parameters:    location_id = location of the fan
                 capabilities = capabilities flags
                 provider -> provider name (will be copied)
                 accuracy = accuracy of the fan speed
@@ -39,8 +38,7 @@ typedef struct fan_s {
                 driver_ws -> r12 value for the driver
  Returns:       pointer to the fan_t, or NULL if failed
  ******************************************************************/
-fan_t *fan_create(int             fan_id,
-                  unsigned long   location_id,
+fan_t *fan_create(unsigned long   location_id,
                   unsigned long   capabilities,
                   const char *    provider,
                   unsigned long   accuracy,
