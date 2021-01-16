@@ -1,0 +1,34 @@
+# Definition for CI within GitLab
+# Note:
+#    Prefix any job name with a '.' to disable.
+#
+
+
+# Enable submodules
+variables:
+  GIT_STRATEGY: clone
+  GIT_SUBMODULE_STRATEGY: none
+
+
+# Common definitions for the jobs
+.common: &common
+  artifacts:
+    when: always
+    paths:
+      - rm32
+  dependencies: []
+
+
+#### Builds ####
+build-command-riscos:
+  <<: *common
+  stage: build
+  script:
+    - riscos-amu ram BUILD32=1
+  tags:
+    - riscos
+
+
+#### Stages to execute ####
+stages:
+  - build
