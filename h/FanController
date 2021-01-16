@@ -86,9 +86,10 @@ typedef enum fancapability_type_e {
 
 
 // Fan state
-#define FanState_OK 0
+#define FanState_Off 0
 #define FanState_Disconnected -1
 #define FanState_Failed -2
+#define FanState_Automatic 101
 
 // Driver operations
 typedef enum fandriver_reason_e {

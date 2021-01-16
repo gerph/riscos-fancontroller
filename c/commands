@@ -5,9 +5,13 @@
  ******************************************************************/
 
 #include <stdlib.h>
+#include <stdio.h>
 #include "kernel.h"
 
 #include "commands.h"
+#include "fans.h"
+#include "fan.h"
+
 
 /*************************************************** Gerph *********
  Function:      Cmd_FansInfo
@@ -18,6 +22,49 @@
  ******************************************************************/
 _kernel_oserror *Cmd_FansInfo(void)
 {
-    /* FIXME: Not implemented */
+    int fan_id;
+    fan_t *fan;
+
+    for (fan_id = 0; (fan=fans_findfan_after(fan_id)) != NULL; fan_id = fan->fan_id)
+    {
+        char location_buffer[64];
+        char speed_buffer[16];
+        char *speed_msg = "Unknown";
+        int speed = fan_getspeed(fan);
+
+        /* FIXME: Really these should be internationalised */
+        if (speed == FanState_Off)
+            speed_msg = "Off";
+        else if (speed == FanState_Failed)
+            speed_msg = "Failed";
+        else if (speed == FanState_Disconnected)
+            speed_msg = "Disconnected";
+        else if (speed == FanState_Automatic)
+            speed_msg = "Automatic";
+        else
+        {
+            /* Ranges */
+            if (speed > 0 && speed <= 100)
+            {
+                sprintf(speed_buffer, "%i%%", speed);
+            }
+            else if (speed > 200)
+            {
+                sprintf(speed_buffer, "%i RPM", speed);
+            }
+            else if (speed < 0)
+            {
+                sprintf(speed_buffer, "Error %i", speed);
+            }
+            else if (speed < 0)
+            {
+                sprintf(speed_buffer, "Code %i", speed);
+            }
+        }
+
+        /* FIXME: Needs a location name decoder */
+        sprintf(location_buffer, "Loc &%08lx", fan->location_id);
+        printf("%5i : %-24s  %-32s  %s\n", fan->fan_id, fan->provider, location_buffer, speed_buffer);
+    }
     return NULL;
 }
