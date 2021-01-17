@@ -5,12 +5,204 @@
  ******************************************************************/
 
 #include <stdlib.h>
+#include <string.h>
 #include <stdio.h>
 #include "kernel.h"
 
 #include "commands.h"
 #include "fans.h"
 #include "fan.h"
+
+typedef struct idmessages_s {
+    int num;
+    const char *message;
+} idmessages_t;
+#define IDMESSAGE_LAST (-1)
+
+
+static idmessages_t device_names[] = {
+        { FanType_Device_CPU, "CPU" },
+        { FanType_Device_GPU, "GPU" },
+        { FanType_Device_Memory, "Memory" },
+        { FanType_Device_IOCard, "I/O card" },
+        { FanType_Device_PSU, "PSU" },
+        { FanType_Device_Backplane, "Backplane" },
+        { FanType_Device_Chassis, "Chassis" },
+        { FanType_Device_External, "External" },
+        { FanType_Device_Generic, "Generic" },
+        { IDMESSAGE_LAST }
+    };
+
+static idmessages_t memory_location[] = {
+        { FanType_Location_Memory_OnModule, "Module" },
+        { FanType_Location_Memory_OnCPUBank, "CPU" },
+        { FanType_Location_Memory_OnChannel, "Channel" },
+        { FanType_Location_Memory_OnRiser, "Riser" },
+        { IDMESSAGE_LAST }
+    };
+
+static idmessages_t space_lateral[] = {
+        { FanType_Location_Space_LateralUnspecified, "Unspecified" },
+        { FanType_Location_Space_LateralLeft, "Left" },
+        { FanType_Location_Space_LateralMiddle, "Middle" },
+        { FanType_Location_Space_LateralRight, "Right" },
+        { IDMESSAGE_LAST }
+    };
+
+static idmessages_t space_longitudinal[] = {
+        { FanType_Location_Space_LongitudinalUnspecified, "Unspecified" },
+        { FanType_Location_Space_LongitudinalFront, "Front" },
+        { FanType_Location_Space_LongitudinalMiddle, "Middle" },
+        { FanType_Location_Space_LongitudinalRear, "Rear" },
+        { IDMESSAGE_LAST }
+    };
+
+static idmessages_t space_vertical[] = {
+        { FanType_Location_Space_VerticalUnspecified, "Unspecified" },
+        { FanType_Location_Space_VerticalLower, "Lower" },
+        { FanType_Location_Space_VerticalMiddle, "Middle" },
+        { FanType_Location_Space_VerticalUpper, "Upper" },
+        { IDMESSAGE_LAST }
+    };
+
+static idmessages_t external_location[] = {
+        { FanType_Location_External_UPS, "UPS" },
+        { FanType_Location_External_ExternalDrive, "Drive" },
+        { FanType_Location_External_ExternalDevice, "Device" },
+        { FanType_Location_External_DeskFan, "Desktop Fan" },
+        { FanType_Location_External_Aircon, "Aircon" },
+        { FanType_Location_External_PizzaOven, "Pizza Oven" },
+        { FanType_Location_External_Unspecified, "Unspecified" },
+        { IDMESSAGE_LAST }
+    };
+
+
+/*************************************************** Gerph *********
+ Function:      lookup_description
+ Description:   Look up a descriptions in a table.
+ Parameters:    num = number to lookup
+                msgs-> the table of messages (idmessages_t list)
+                def-> the default message
+ Returns:       pointer to the message, or def if no value found.
+ ******************************************************************/
+const char *lookup_description(int num, idmessages_t *msgs, const char *def)
+{
+    /* FIXME: Internationalising these message lookups could be done here if we cared */
+    while (msgs->num != IDMESSAGE_LAST)
+    {
+        if (msgs->num == num)
+            return msgs->message;
+        msgs++;
+    }
+    return def;
+}
+
+/*************************************************** Gerph *********
+ Function:      location_name
+ Description:   Decode the location into a name
+ Parameters:    location_id = location to name
+ Returns:       pointer to a string (static) which describes it
+ ******************************************************************/
+const char *location_name(unsigned long location_id)
+{
+    int device = (int)(location_id >> FanType_Device_Shift) & FanType_Device_Mask;
+    int sequence = (int)(location_id >> FanType_Sequence_Shift) & FanType_Sequence_Mask;
+    int location = (int)(location_id >> FanType_Location_Shift) & FanType_Location_Mask;
+    static char location_buffer[64];
+    char tempbuffer[16];
+
+    const char *device_name;
+    sprintf(tempbuffer, "Device#%i", device);
+    device_name = lookup_description(device, device_names, tempbuffer);
+
+    /* Handle the positional devices */
+    if (device >= 16 && device <= 31)
+    {
+        int add_comma = 0;
+        int lateral, longitudinal, vertical;
+        strcpy(location_buffer, device_name);
+
+        /* Positions in space */
+        lateral = (location >> FanType_Location_Space_LateralShift) & FanType_Location_Space_LateralMask;
+        if (lateral != 0)
+        {
+            strcat(location_buffer, add_comma ? ", " : " ");
+            strcat(location_buffer, lookup_description(lateral, space_lateral, ""));
+            add_comma = 1;
+        }
+
+        longitudinal = (location >> FanType_Location_Space_LongitudinalShift) & FanType_Location_Space_LongitudinalMask;
+        if (longitudinal != 0)
+        {
+            strcat(location_buffer, add_comma ? ", " : " ");
+            strcat(location_buffer, lookup_description(longitudinal, space_longitudinal, ""));
+            add_comma = 1;
+        }
+
+        vertical = (location >> FanType_Location_Space_VerticalShift) & FanType_Location_Space_VerticalMask;
+        if (vertical != 0)
+        {
+            strcat(location_buffer, add_comma ? ", " : " ");
+            strcat(location_buffer, lookup_description(vertical, space_vertical, ""));
+            add_comma = 1;
+        }
+
+        if (sequence != 0)
+        {
+            char seq[8];
+            sprintf(seq, " #%i", sequence);
+            strcat(location_buffer, seq);
+        }
+        return location_buffer;
+    }
+
+    /* Specific enumerated devices */
+    switch (device)
+    {
+        case FanType_Device_CPU:
+        case FanType_Device_GPU:
+        case FanType_Device_IOCard:
+            strcpy(location_buffer, device_name);
+            if (sequence != 0)
+            {
+                char seq[8];
+                sprintf(seq, " #%i", sequence);
+                strcat(location_buffer, seq);
+            }
+            return location_buffer;
+
+        case FanType_Device_Memory:
+            strcpy(location_buffer, device_name);
+            sprintf(tempbuffer, "Loc#%i", location);
+            strcat(location_buffer, " ");
+            strcat(location_buffer, lookup_description(location, memory_location, tempbuffer));
+            if (sequence != 0)
+            {
+                char seq[8];
+                sprintf(seq, " #%i", sequence);
+                strcat(location_buffer, seq);
+            }
+            return location_buffer;
+
+        case FanType_Device_External:
+            strcpy(location_buffer, device_name);
+            sprintf(tempbuffer, "Loc#%i", location);
+            strcat(location_buffer, " ");
+            strcat(location_buffer, lookup_description(location, external_location, tempbuffer));
+            if (sequence != 0)
+            {
+                char seq[8];
+                sprintf(seq, " #%i", sequence);
+                strcat(location_buffer, seq);
+            }
+            return location_buffer;
+
+        default:
+            /* Not a recognised location; we'll just show the id */
+            sprintf(location_buffer, "%s: &%08lx", device_name, location_id);
+            return location_buffer;
+    }
+}
 
 
 /*************************************************** Gerph *********
@@ -27,7 +219,7 @@ _kernel_oserror *Cmd_FansInfo(void)
 
     for (fan_id = 0; (fan=fans_findfan_after(fan_id)) != NULL; fan_id = fan->fan_id)
     {
-        char location_buffer[64];
+        const char *location;
         char speed_buffer[16];
         char *speed_msg = "Unknown";
         int speed = fan_getspeed(fan);
@@ -62,9 +254,8 @@ _kernel_oserror *Cmd_FansInfo(void)
             }
         }
 
-        /* FIXME: Needs a location name decoder */
-        sprintf(location_buffer, "Loc &%08lx", fan->location_id);
-        printf("%5i : %-24s  %-32s  %s\n", fan->fan_id, fan->provider, location_buffer, speed_buffer);
+        location = location_name(fan->location_id);
+        printf("%5i : %-24s  %-32s  %s\n", fan->fan_id, fan->provider, location, speed_buffer);
     }
     return NULL;
 }
