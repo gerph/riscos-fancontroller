@@ -1,0 +1,148 @@
+/*******************************************************************
+ * File:        fans
+ * Purpose:     Fan registration and management
+ * Author:      Gerph
+ ******************************************************************/
+
+#include <stdlib.h>
+#include "kernel.h"
+#include "swis.h"
+
+#include "FanController.h"
+
+#include "modhead.h"
+#include "fan.h"
+
+/* The name of this provider; not the module name, because the module
+ * name would always be prefixed by 'FanDriver' and that would be
+ * somewhat redundant.
+ */
+static const char *provider_name = "Dummy";
+
+
+/**
+ * We only support a single fan in this dummy driver.
+ * If you support multiple fans, this could be an array, to find
+ * the fans you support. Each of the places where the 'myfan'
+ * structure is referenced would need to be a loop over all the
+ * fans you can support.
+ */
+static fan_t myfan = {
+    /* Initially this fan is invalid */
+    FanId_Invalid,
+
+    /**
+     * The initial location that this fan registers with:
+     *   Chassis device
+     *   Left, Rear position
+     *   Sequence number 0
+     */
+    /* FIXME: Shouldn't this just be a C bitfield instead of all these shifts? */
+    (((FanType_Location_Space_LateralLeft<<FanType_Location_Space_LateralShift) |
+      (FanType_Location_Space_LongitudinalRear<<FanType_Location_Space_LongitudinalShift) |
+      (FanType_Location_Space_VerticalUnspecified<<FanType_Location_Space_VerticalShift)) << FanType_Location_Shift) |
+    (0<<FanType_Sequence_Shift) |
+    (FanType_Device_Chassis<<FanType_Device_Shift),
+
+    /* Capabilities - we only support manual configuration */
+    FanCapability_SupportsManual,
+
+    /* Accuracy - we have arbitrary accuracy */
+    0,
+
+    /* Maximum speed - we don't care */
+    0,
+
+    /* Pointer to a list of words for the speeds we support - we don't have any explicit list */
+    NULL,
+};
+
+
+/*************************************************** Gerph *********
+ Function:      fans_register
+ Description:   Register the fans we supply with the FanController module
+ Parameters:    pw = our private word
+ Returns:       none
+ ******************************************************************/
+void fans_register(void *pw)
+{
+    fan_t *fan = &myfan;
+
+    /* Open the fan, connecting to it and getting other information necessary */
+    fan->fan_id = FanId_Invalid;
+    fan_open(fan);
+    /* The open will fill in the parameters that should be used for the
+     * registration.
+     */
+
+    /**
+     * Now register the fan, if it's actually alive - in some cases, the
+     * fan may not actually be present at the time of this call, and needs
+     * to be registered later.
+     */
+    if (fan_alive(fan))
+    {
+        _kernel_oserror *err;
+
+        err = _swix(FanController_Register, _INR(0, 7)|_OUT(0),
+                                            Driver_Entry, pw,
+                                            fan->location_id,
+                                            fan->capabilities,
+                                            provider_name,
+                                            fan->accuracy,
+                                            fan->maximum,
+                                            fan->speeds,
+                                            &fan->fan_id);
+        if (err)
+        {
+            /* Could not register, so we give up - maybe the FanController isn't present */
+            fan->fan_id = FanId_Invalid;
+            /* Close the fan to release resources, etc */
+            fan_close(fan);
+        }
+    }
+}
+
+/*************************************************** Gerph *********
+ Function:      fans_deregister
+ Description:   Deregister the fans we supply with the FanController module
+                and shut them down
+ Parameters:    pw = our private word
+                call_deregister = 1 if we should actually deregister the
+                                    fans
+                                  0 if we should just shut them down
+                                    (because the module is already dead)
+ Returns:       none
+ ******************************************************************/
+void fans_deregister(void *pw, int call_deregister)
+{
+    fan_t *fan = &myfan;
+    /* First, deregister the fans if necessary */
+    if (call_deregister)
+    {
+        if (fan->fan_id != FanId_Invalid)
+        {
+            _swix(FanController_Deregister, _IN(0), fan->fan_id);
+            fan->fan_id = FanId_Invalid;
+        }
+    }
+
+    /* Now close all the fans that are present */
+    fan_close(fan);
+}
+
+/*************************************************** Gerph *********
+ Function:      fans_findfan
+ Description:   Given the fan_id, return the fan structure
+ Parameters:    fan_id = fan_id to look for
+ Returns:       fan structure, or NULL if not valid
+ ******************************************************************/
+fan_t *fans_findfan(int fan_id)
+{
+    fan_t *fan = &myfan;
+
+    if (fan->fan_id == fan_id)
+        return fan;
+
+    return NULL;
+}

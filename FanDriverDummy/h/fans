@@ -1,0 +1,41 @@
+/*******************************************************************
+ * File:        fans
+ * Purpose:     Fan registration and management
+ * Author:      Gerph
+ ******************************************************************/
+
+#ifndef FANS_H
+#define FANS_H
+
+#include "fan.h"
+
+/*************************************************** Gerph *********
+ Function:      fans_register
+ Description:   Register the fans we supply with the FanController module
+ Parameters:    pw = our private word
+ Returns:       none
+ ******************************************************************/
+void fans_register(void *pw);
+
+/*************************************************** Gerph *********
+ Function:      fans_deregister
+ Description:   Deregister the fans we supply with the FanController module
+                and shut them down
+ Parameters:    pw = our private word
+                call_deregister = 1 if we should actually deregister the
+                                    fans
+                                  0 if we should just shut them down
+                                    (because the module is already dead)
+ Returns:       none
+ ******************************************************************/
+void fans_deregister(void *pw, int call_deregister);
+
+/*************************************************** Gerph *********
+ Function:      fans_findfan
+ Description:   Given the fan_id, return the fan structure
+ Parameters:    fan_id = fan_id to look for
+ Returns:       fan structure, or NULL if not valid
+ ******************************************************************/
+fan_t *fans_findfan(int fan_id);
+
+#endif

@@ -1,0 +1,150 @@
+/*******************************************************************
+ * File:        module
+ * Purpose:     FanDriverDummy module interface
+ * Author:      Gerph
+ ******************************************************************/
+
+#include <stdlib.h>
+#include <stdio.h>
+
+#include "kernel.h"
+
+#include "modhead.h"
+#include "FanController.h"
+#include "fans.h"
+
+
+/***************************************************************************
+ * Function:     Mod_Init
+ * Description:  Initialise the module, setting up vectors, callbacks and
+ *               any other parts of the system necessary for the module to
+ *               function.
+ * Parameters:   tail        = pointer to command line (control terminated)
+ *               podule_base = address of podule module was started from, or
+ *                             NULL if none
+ *               pw          = private word for module
+ * On exit:      Return NULL for successful initialisation, or a pointer to
+ *               an error block if the module could not start properly.
+ **************************************************************************/
+_kernel_oserror *Mod_Init(const char *tail, int podule_base, void *pw)
+{
+    fans_register(pw);
+    printf("Module FanDriverDummy initialised\n");
+    return NULL;
+}
+
+
+/***************************************************************************
+ * Function:     Mod_Final
+ * Description:  Finalise the module, shutting down any systems necessary,
+ *               freeing vectors and releasing workspace
+ * Parameters:   fatal       = fatality indicator; 1 if fatal, 0 if
+ *                             reinitialising
+ *               podule_base = address of podule module was started from, or
+ *                             NULL if none
+ *               pw          = private word for module
+ * On exit:      Return 0 for successful finalisation, or a pointer to an
+ *               error block if module was not shutdown properly.
+ **************************************************************************/
+_kernel_oserror *Mod_Final(int fatal, int podule_base, void *pw)
+{
+    fans_deregister(pw, 1);
+    printf("Module FanDriverDummy dying\n");
+    return NULL;
+}
+
+
+/***************************************************************************
+ * Function:     Mod_Service
+ * Description:  Service call handler routine. All services which are being
+ *               received by the module will be passed to this routine.
+ * Parameters:   service = service call number
+ *               r       = pointer to register block on entry
+ *               pw      = private word for module
+ * On exit:      Update register values on return by updating r.
+ **************************************************************************/
+void Mod_Service(int service, _kernel_swi_regs *r, void *pw)
+{
+    switch (service)
+    {
+        case Service_FanControllerStarted:
+            fans_register(pw);
+            break;
+
+        case Service_FanControllerDying:
+            fans_deregister(pw, 0);
+            break;
+    }
+}
+
+
+/***************************************************************************
+ * Function:     Driver_Handler
+ * Description:  Generic handler function
+ * Parameters:   r  = pointer to register block on entry
+ *               pw = private word for module
+ * On exit:      Update r to alter return values
+ *               Return NULL to return with V clear
+ *               Return an error pointer to set V and r0
+ **************************************************************************/
+_kernel_oserror *Driver_Handler(_kernel_swi_regs *r, void *pw)
+{
+    int reason = r->r[0];
+    int fan_id = r->r[1];
+    unsigned long location_id = r->r[2];
+    fan_t *fan = fans_findfan(fan_id);
+
+    if (fan == NULL)
+    {
+        /* We were called for a fan we don't know about ? Report as an error */
+        goto bad_call;
+    }
+
+    switch (reason)
+    {
+        case FanDriver_GetSpeed:
+            if (fan_alive(fan))
+                r->r[3] = fan_getspeed(fan);
+            else
+                r->r[3] = FanState_Disconnected;
+            break;
+
+        case FanDriver_SetSpeed:
+            if (fan_alive(fan))
+                r->r[3] = fan_setspeed(fan, r->r[3]);
+            else
+                r->r[3] = FanState_Disconnected;
+            break;
+
+        case FanDriver_GetControlMode:
+            if (fan_alive(fan))
+                r->r[3] = fan_getcontrolmode(fan);
+            else
+                goto bad_call; /* We cannot return a useful control mode */
+            break;
+
+        case FanDriver_SetControlMode:
+            if (fan_alive(fan))
+                r->r[3] = fan_setcontrolmode(fan, (fancontrolmode_t)r->r[3]);
+            else
+                goto bad_call; /* We cannot return a useful control mode */
+            break;
+
+        case FanDriver_SetLocation:
+            if (fan_alive(fan))
+                r->r[3] = fan_setlocation(fan, (unsigned long)r->r[3]);
+            else
+                r->r[3] = FanSetLocation_Invalid;
+            break;
+
+        default:
+            /* Unrecognised reason code */
+            goto bad_call;
+    }
+
+    return NULL;
+
+bad_call:
+    r->r[0] = -1;
+    return NULL;
+}

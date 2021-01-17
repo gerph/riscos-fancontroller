@@ -7,6 +7,11 @@
 #ifndef FANCONTROLLER_H
 #define FANCONTROLLER_H
 
+#ifndef CMHG
+
+// Invalid fan id
+#define FanId_Invalid (0)
+
 // Fan descriptor details
 #define FanType_Location_Shift 0
 #define FanType_Location_Mask 255
@@ -86,9 +91,9 @@ typedef enum fancapability_type_e {
 
 
 // Fan state
-#define FanState_Off 0
-#define FanState_Disconnected -1
-#define FanState_Failed -2
+#define FanState_Off            0
+#define FanState_Disconnected   (-1)
+#define FanState_Failed         (-2)
 #define FanState_Automatic 101
 
 // Driver operations
@@ -120,6 +125,8 @@ typedef enum fanconfigure_reason_e {
     FanController_Configure_Location = 1
 } fanconfigure_reason_t;
 
+#endif
+
 // Service calls - NOT registered
 #define Service_FanControllerStarted (0x10040)
 #define Service_FanControllerDying (0x10041)
@@ -140,13 +147,13 @@ typedef enum fanconfigure_reason_e {
 // SWI numbers
 #ifndef FanController_Version
 #define FanController_0 (0x10080)
-#define FanController_Version (SWIFanController_0 + 0)
-#define FanController_Enumerate (SWIFanController_0 + 1)
-#define FanController_Info (SWIFanController_0 + 2)
-#define FanController_Speed (SWIFanController_0 + 3)
-#define FanController_Configure (SWIFanController_0 + 4)
-#define FanController_Register (SWIFanController_0 + 16)
-#define FanController_Deregister (SWIFanController_0 + 17)
+#define FanController_Version (FanController_0 + 0)
+#define FanController_Enumerate (FanController_0 + 1)
+#define FanController_Info (FanController_0 + 2)
+#define FanController_Speed (FanController_0 + 3)
+#define FanController_Configure (FanController_0 + 4)
+#define FanController_Register (FanController_0 + 16)
+#define FanController_Deregister (FanController_0 + 17)
 #endif
 
 #endif

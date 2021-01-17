@@ -1,0 +1,145 @@
+/*******************************************************************
+ * File:        fan
+ * Purpose:     Fan interfacing
+ * Author:      Gerph
+ ******************************************************************/
+
+#include "FanController.h"
+
+#include "fan.h"
+
+/*************************************************** Gerph *********
+ Function:      fan_open
+ Description:   Open the connection to a fan
+                If we were successful, fan_alive will return true.
+                If we're not, we won't get registered.
+ Parameters:    fan -> the fan data
+ Returns:       none
+ ******************************************************************/
+void fan_open(fan_t *fan)
+{
+    /* Connect to your hardware here and populate any parameters in
+     * the structure - the device ids, memory locations, file handles,
+     * IP address, or whatever is necessary to communcate with the
+     * fan.
+     */
+
+    /* Dummy driver just sets up the speeds as if there's a device */
+    fan->speed = 100;
+    fan->control_mode = FanControl_Manual;
+
+    return;
+}
+
+
+/*************************************************** Gerph *********
+ Function:      fan_close
+ Description:   Close the connection to a fan
+                From here on, fan_alive will report false.
+ Parameters:    fan -> the fan data
+ Returns:       none
+ ******************************************************************/
+void fan_close(fan_t *fan)
+{
+    /* Release any memory or other resources that were claimed in the
+     * open call.
+     */
+
+    /* Dummy driver does nothing */
+    return;
+}
+
+
+/*************************************************** Gerph *********
+ Function:      fan_alive
+ Description:   Check if this fan structure is alive
+ Parameters:    fan -> the fan data
+ Returns:       1 if the fan is connected and alive,
+                0 if the fan is either not connected, or we are
+                    unable to communicate with it
+ ******************************************************************/
+int fan_alive(fan_t *fan)
+{
+    /* This check is intended to ensure that if a fan has become
+     * disconnected but we haven't deregistered it, we do not try
+     * to communicate.
+     * If this function returns false, we'll not make any other
+     * calls to the fan.
+     */
+
+    /* Dummy fan is always alive */
+    return 1;
+}
+
+
+
+/*************************************************** Gerph *********
+ Function:      fan_getspeed
+ Description:   Read the current speed
+ Parameters:    fan -> the fan data
+ Returns:       current speed
+ ******************************************************************/
+int fan_getspeed(fan_t *fan)
+{
+    return fan->speed;
+}
+
+/*************************************************** Gerph *********
+ Function:      fan_setspeed
+ Description:   Set the speed for the fan
+ Parameters:    fan -> the fan data
+                speed = new speed to select
+ Returns:       current speed
+ ******************************************************************/
+int fan_setspeed(fan_t *fan, int speed)
+{
+    fan->speed = speed;
+    return fan->speed;
+}
+
+/*************************************************** Gerph *********
+ Function:      fan_getcontrolmode
+ Description:   Read the control mode
+ Parameters:    fan -> the fan data
+ Returns:       current speed
+ ******************************************************************/
+fancontrolmode_t fan_getcontrolmode(fan_t *fan)
+{
+    return fan->control_mode;
+}
+
+/*************************************************** Gerph *********
+ Function:      fan_setcontrolmode
+ Description:   Set the control mode
+ Parameters:    fan -> the fan data
+                mode = control mode to select
+ Returns:       control mode
+ ******************************************************************/
+fancontrolmode_t fan_setcontrolmode(fan_t *fan, fancontrolmode_t control_mode)
+{
+    fan->control_mode = control_mode;
+    return control_mode;
+}
+
+/*************************************************** Gerph *********
+ Function:      fan_setlocation
+ Description:   Change the location of the fan
+ Parameters:    fan -> the fan data
+                new_location_id = location
+ Returns:       0 if ok, -1 if invalid
+ ******************************************************************/
+fansetlocation_result_t fan_setlocation(fan_t *fan, unsigned long new_location_id)
+{
+    /**
+     * Are we allowed to change the location?
+     *
+     * If the driver knows that it can only be placed in particular places, then it
+     * can deny the change. For example, a CPU fan controller could reject being
+     * placed anywhere but on a CPU.
+     */
+    if (1)
+        return FanSetLocation_OK;
+
+    return FanSetLocation_Invalid;
+}
+

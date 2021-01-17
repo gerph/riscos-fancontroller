@@ -17,18 +17,22 @@ variables:
     paths:
       - FanController/rm32
       - FanController/built/docs
+      - FanDriverDummy/rm32
   dependencies: []
 
 
 #### Builds ####
-build-command-riscos:
+build-modules-riscos:
   <<: *common
   stage: build
   script:
     - xsltproc --version || { apt-get update && apt-get install -y xsltproc ; }
     - cd FanController
     - riscos-amu ram BUILD32=1
+    - riscos-amu export BUILD32=1
     - riscos-amu docs BUILD32=1
+    - cd ../FanDriverDummy
+    - riscos-amu ram BUILD32=1
   tags:
     - riscos
 
