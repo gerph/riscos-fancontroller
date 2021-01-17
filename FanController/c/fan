@@ -130,9 +130,33 @@ int fan_setspeed(fan_t *fan, int speed)
 {
     _kernel_oserror *err;
 
-    // FIXME: Validate the speed against those supported - find the closest?
-    // FIXME: Validate against the maximum
-    // FIXME: Apply accuracy to the speed - find the closest?
+    if (speed > fan->maximum)
+        return FanState_Disconnected;
+
+    /* If there is an accuracy, check that they supplied the speed to that accuracy */
+    if (fan->accuracy)
+    {
+        if (speed % fan->accuracy)
+            return FanState_Disconnected;
+    }
+
+    /* If there are only certain speeds supported, check against them */
+    if (fan->speeds)
+    {
+        unsigned long *speed_ptr = fan->speeds;
+        int found = 0;
+        for (speed_ptr = fan->speeds; *speed_ptr != -1; speed_ptr++)
+        {
+            if (*speed_ptr == speed)
+            {
+                found = 1;
+                break;
+            }
+        }
+        // FIXME: Decide if it'd be better to round to the closest?
+        if (!found)
+            return FanState_Disconnected;
+    }
 
     err = _callx(fan->driver_code, fan->driver_ws,
                  _INR(0, 3)|_OUT(3),
@@ -157,7 +181,11 @@ fancontrolmode_t fan_getcontrol(fan_t *fan)
     _kernel_oserror *err;
     fancontrolmode_t  mode;
 
-    /* FIXME: If it's not automatic, we can only return manual */
+    if (! (fan->capabilities & FanCapability_SupportsAutomatic))
+    {
+        // If it does not support automatic control, then it's manual only
+        return FanControl_Manual;
+    }
 
     err = _callx(fan->driver_code, fan->driver_ws,
                  _INR(0, 2)|_OUT(3),
@@ -182,7 +210,29 @@ fancontrolmode_t fan_setcontrol(fan_t *fan, fancontrolmode_t mode)
 {
     _kernel_oserror *err;
 
-    /* FIXME: Validate mode selection */
+    if (mode == FanControl_Manual)
+    {
+        if (! (fan->capabilities & FanCapability_SupportsManual))
+        {
+            /* They wanted manual, but manual isn't supported, so error */
+            return FanControl_Error;
+        }
+    }
+    else if (mode == FanControl_AutomaticPerformance ||
+             mode == FanControl_AutomaticNoise)
+    {
+        if (! (fan->capabilities & FanCapability_SupportsAutomatic))
+        {
+            /* They wanted one of the automatic, but auto isn't supported, so error */
+            return FanControl_Error;
+        }
+    }
+    else
+    {
+        /* That's not a valid control state */
+        return FanControl_Error;
+    }
+
     err = _callx(fan->driver_code, fan->driver_ws,
                  _INR(0, 3)|_OUT(3),
                  FanDriver_SetControlMode, fan->fan_id, fan->location_id, mode,
