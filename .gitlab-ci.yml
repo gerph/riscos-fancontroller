@@ -15,8 +15,8 @@ variables:
   artifacts:
     when: always
     paths:
-      - rm32
-      - built/docs
+      - FanController/rm32
+      - FanController/built/docs
   dependencies: []
 
 
@@ -26,6 +26,7 @@ build-command-riscos:
   stage: build
   script:
     - xsltproc --version || { apt-get update && apt-get install -y xsltproc ; }
+    - cd FanController
     - riscos-amu ram BUILD32=1
     - riscos-amu docs BUILD32=1
   tags:
