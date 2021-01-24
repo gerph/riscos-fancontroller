@@ -87,9 +87,13 @@ class FanConstants(object):
     FanDriver_SetLocation = 4
 
     # Configuration of the fan control
+    FanControl_Invalid = -1
     FanControl_Manual = 0
-    FanControl_AutomaticPerformance = 1
-    FanControl_AutomaticNoise = 2
+    FanControl_Managed = 1
+    # Gap allows there to be other 'Automatic' modes which are all in the 8-16 range,
+    # so that clients might be able to report these all as 'automatic'.
+    FanControl_AutomaticPerformance = 8
+    FanControl_AutomaticNoise = 9
 
     # Location change response
     FanSetLocation_OK = 0

@@ -71,11 +71,32 @@ always powered, but many have some controls, and some have monitoring of their c
 </p>
 
 <p>
-Fans generally have two modes of control. They can be controlled to operate at specific speeds, usually reported
-in RPM. Or they can be controlled as fractions of their full speed, reported as a percentage. The fan may be
-unable to report a speed if it has no explicit controls - it may only be able to be turned on and off.
-The control of that fan spped may be entirely handled automatically to allow the driver (or separate hardware) to
-tailor the fan's behaviour to the system's needs. Additionally, some fans may be able to report that they have failed.
+Fans can be operate in one of three modes of control:
+</p>
+
+<p>
+<list type='unordered'>
+    <item>Manual control. In this mode, the fan is given speeds by the user, and it runs at that speed until
+          a new speed is given.</item>
+
+    <item>Automatic control. In this mode, the fan driver is controlling the speed, and attempts by the
+          user to change the fan speed will be ineffective. This mode will be offered by fan drivers which
+          can either control the speed themselves, or which interface with hardware which offers an
+          automatic management mode.</item>
+
+    <item>Managed control. In this mode, the fan driver is being managed by another module within the system.
+          This control mode is informational, as the operations to control the speed will be effective, but
+          the managing module will override the speed controls as it manages the fan. Fan drivers are
+          never informed that they are running in 'managed' mode - to them it appears that they are under
+          manual control. User interface components should not allow manual changes to fans which are
+          under managed control.</item>
+</list>
+</p>
+
+<p>They can be controlled to operate at specific speeds, usually reported in RPM. Or they can be controlled as
+fractions of their full speed, reported as a percentage. The fan may be unable to report a speed if it has no
+explicit controls - it may only be able to be turned on and off. Some fans may be able to report that they have
+failed, either because they are detected as broken, or monitoring reports that they are not performing correctly.
 </p>
 
 <p>
@@ -117,9 +138,11 @@ tailor the fan's behaviour to the system's needs. Additionally, some fans may be
 <p>
     <value-table>
         <value number="-1">Fan system error</value>
-        <value number="0">Manual speed control</value>
-        <value number="1">Automatic speed control (favour performance)</value>
-        <value number="2">Automatic speed control (favour quietness)</value>
+        <value number="0">Manual speed control (user is controlling the speed)</value>
+        <value number="1">Managed speed control (system component is controlling the speed)</value>
+        <value number="8">Automatic speed control (favour performance)</value>
+        <value number="9">Automatic speed control (favour quietness)</value>
+        <value number="10-15">Automatic speed control (reserved for future expansion)</value>
     </value-table>
 </p>
 </subsection>
@@ -1200,6 +1223,10 @@ UNTIL fan_id% = -1
   </revision>
   <revision number="2" author="Gerph" date="13 Jan 2021" title="Registration interface">
     <change>Refactored to allow multiple fan driver registrations.</change>
+  </revision>
+  <revision number="3" author="Gerph" date="24 Jan 2021" title="Managed control mode">
+    <change>Introduced 'managed' control mode at Chris' suggestion.</change>
+    <change>Control modes have been moved to insert 'managed' control mode.</change>
   </revision>
  </history>
 

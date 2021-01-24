@@ -20,7 +20,7 @@ class FanDescriptor(object):
             FanConstants.FanType_Device_IOCard: 'I/O card',
             FanConstants.FanType_Device_PSU: 'PSU',
             FanConstants.FanType_Device_Backplane: 'Backplane',
-            FanConstants.FanType_Device_Chassis: 'Chasis',
+            FanConstants.FanType_Device_Chassis: 'Chassis',
             FanConstants.FanType_Device_External: 'External',
             FanConstants.FanType_Device_Generic: 'Generic',
         }
@@ -58,6 +58,13 @@ class FanDescriptor(object):
             FanConstants.FanType_Location_External_Unspecified: "Unspecified",
         }
 
+    control_modes = {
+            FanConstants.FanControl_Manual: "Manual",
+            FanConstants.FanControl_Managed: "Managed",
+            FanConstants.FanControl_AutomaticNoise: "Auto (Noise)",
+            FanConstants.FanControl_AutomaticPerformance: "Auto (Perf.)",
+        }
+
     def __init__(self, ro, location_id, provider, accuracy, maximum, speeds, capabilities, driver, driver_ws):
         self.ro = ro
         # Fan_id is assigned on registration
@@ -69,6 +76,7 @@ class FanDescriptor(object):
         self.maximum = maximum
         self.speeds = speeds
         self._speeds_mem = None
+        self.control_mode = FanConstants.FanControl_Invalid
         self.capabilities = capabilities
         self.driver = driver
         self.driver_ws = driver_ws
@@ -190,25 +198,44 @@ class FanDescriptor(object):
             # If it does not support automatic control, then it's manual only
             return FanConstants.FanControl_Manual
 
+        if self.control_mode != FanConstants.FanControl_Invalid:
+            # We know what the mode is; return it.
+            return self.control_mode
+
         regs = self.driver_call(FanConstants.FanDriver_GetControlMode,
                                 rout=[3])
-        return regs[3]
+        self.control_mode = regs[3]
+        return self.control_mode
 
     def set_control(self, control):
-        if control == FanConstants.FanControl_Manual:
+        if control in (FanConstants.FanControl_Manual, FanConstants.FanControl_Managed):
             if not (self.capabilities & (FanConstants.FanCapability_SupportsManual)):
                 raise RISCOSSyntheticError(self.ro, FanConstants.ErrorNumber_BadControlMode,
-                                           "Fan cannot be configured for manual control")
+                                           "Fan cannot be configured for manual/managed control")
+
         elif control in (FanConstants.FanControl_AutomaticNoise,
                          FanConstants.FanControl_AutomaticPerformance):
             if not (self.capabilities & (FanConstants.FanCapability_SupportsAutomatic)):
                 raise RISCOSSyntheticError(self.ro, FanConstants.ErrorNumber_BadControlMode,
                                            "Fan cannot be configured for automatic control")
 
+        if self.control_mode == control:
+            # It's already in this mode. No need to tell them something they already know.
+            return self.control_mode
+
+        # If they asked for managed mode, we ask the driver for manual mode, because to it
+        # they're being driven manually and don't care who drives them.
+        request = FanConstants.FanControl_Manual if control == FanConstants.FanControl_Managed else control
         regs = self.driver_call(FanConstants.FanDriver_SetControlMode,
-                                rin={3: control},
+                                rin={3: request},
                                 rout=[3])
-        return regs[3]
+
+        self.control_mode = regs[3]
+        if control == FanConstants.FanControl_Managed and regs[3] == FanConstants.FanControl_Manual:
+            # Make it appear to the outside world like it's managed if that's what we requested.
+            self.control_mode = FanConstants.FanControl_Managed
+
+        return self.control_mode
 
     def set_location(self, new_location_id):
         if not self.capabilities & FanConstants.FanCapability_SupportsMove:
@@ -270,7 +297,7 @@ class Fans(object):
         fan = self.fans.get(fan_id, None)
         if not fan:
             raise RISCOSSyntheticError(self.ro, FanConstants.ErrorNumber_BadFan,
-                                       "Bad fan identifier &{:x} specified to FanController")
+                                       "Bad fan identifier &{:x} specified to FanController".format(fan_id))
         return fan
 
     def __iter__(self):
@@ -315,10 +342,10 @@ class FanController(PyModule):
         ]
 
     commands = [
-            ('FanInfo',
+            ('FansInfo',
              "Displays information about the fans known to the system.",
              0x00000000,
-             'Syntax: *FanInfo')
+             'Syntax: *FansInfo')
         ]
 
     api_version = 100
@@ -557,9 +584,9 @@ class FanController(PyModule):
 
         return True
 
-    def cmd_faninfo(self, args):
+    def cmd_fansinfo(self, args):
         """
-        Syntax: *FanInfo
+        Syntax: *FansInfo
         """
         for fan in self.fans:
             speed = fan.get_speed()
@@ -578,7 +605,11 @@ class FanController(PyModule):
             else:
                 speed_str = "Code {}".format(speed)
 
+            control = fan.get_control()
+            control_str = fan.control_modes.get(control, "Control {}".format(control))
+
             location_str = fan.location_name()
 
-            self.ro.kernel.writeln("{:5} : {:<24}  {:<32}  {}".format(fan.fan_id, fan.provider,
-                                                                      location_str, speed_str))
+            self.ro.kernel.writeln("{:5} : {:<24}  {:<32}  {:9}  {}".format(fan.fan_id, fan.provider,
+                                                                            location_str, control_str,
+                                                                            speed_str))

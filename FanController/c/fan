@@ -62,6 +62,8 @@ fan_t *fan_create(unsigned long   location_id,
         memcpy(fan->speeds, speeds, sizeof(unsigned long) * (nspeeds + 1));
     }
     fan->maximum = maximum;
+    fan->control_mode = FanControl_Error; /* Marker that we haven't read it yet */
+
     fan->driver_code = driver_code;
     fan->driver_ws = driver_ws;
 
@@ -181,19 +183,26 @@ fancontrolmode_t fan_getcontrol(fan_t *fan)
     _kernel_oserror *err;
     fancontrolmode_t  mode;
 
+    if (fan->control_mode != FanControl_Error)
+    {
+        /* We know the mode it's in, so we can return it */
+        return fan->control_mode;
+    }
+
     if (! (fan->capabilities & FanCapability_SupportsAutomatic))
     {
         // If it does not support automatic control, then it's manual only
-        return FanControl_Manual;
+        mode = FanControl_Manual;
     }
-
-    err = _callx(fan->driver_code, fan->driver_ws,
-                 _INR(0, 2)|_OUT(3),
-                 FanDriver_GetControlMode, fan->fan_id, fan->location_id,
-                 &mode);
-    if (err)
+    else
     {
-        return FanControl_Error;
+        err = _callx(fan->driver_code, fan->driver_ws,
+                     _INR(0, 2)|_OUT(3),
+                     FanDriver_GetControlMode, fan->fan_id, fan->location_id,
+                     &mode);
+        if (err)
+            mode = FanControl_Error;
+        fan->control_mode = mode;
     }
     return mode;
 }
@@ -209,8 +218,10 @@ fancontrolmode_t fan_getcontrol(fan_t *fan)
 fancontrolmode_t fan_setcontrol(fan_t *fan, fancontrolmode_t mode)
 {
     _kernel_oserror *err;
+    fancontrolmode_t request;
 
-    if (mode == FanControl_Manual)
+    if (mode == FanControl_Manual ||
+        mode == FanControl_Managed)
     {
         if (! (fan->capabilities & FanCapability_SupportsManual))
         {
@@ -233,6 +244,19 @@ fancontrolmode_t fan_setcontrol(fan_t *fan, fancontrolmode_t mode)
         return FanControl_Error;
     }
 
+    if (mode == fan->control_mode)
+    {
+        /* They're already in the mode requested, so there is no need to bother the driver */
+        return mode;
+    }
+
+    request = mode;
+    if (mode == FanControl_Managed)
+    {
+        /* Managed is largely informational for interfaces; the driver only sees 'manual' */
+        request = FanControl_Manual;
+    }
+
     err = _callx(fan->driver_code, fan->driver_ws,
                  _INR(0, 3)|_OUT(3),
                  FanDriver_SetControlMode, fan->fan_id, fan->location_id, mode,
@@ -241,6 +265,14 @@ fancontrolmode_t fan_setcontrol(fan_t *fan, fancontrolmode_t mode)
     {
         return FanControl_Error;
     }
+
+    if (mode == FanControl_Managed && mode == FanControl_Manual)
+    {
+        /* Change to managed so that we keep it as managed */
+        mode = FanControl_Managed;
+    }
+    fan->control_mode = mode;
+
     return mode;
 }
 

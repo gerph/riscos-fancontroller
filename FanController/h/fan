@@ -10,15 +10,16 @@
 #include "FanController.h"
 
 typedef struct fan_s {
-    struct fan_s *  next;
+    struct fan_s *      next;
 
-    int             fan_id;
-    unsigned long   location_id;
-    unsigned long   capabilities;
-    char *          provider;
-    unsigned long   accuracy;
-    unsigned long * speeds;
-    unsigned long   maximum;
+    int                 fan_id;
+    unsigned long       location_id;
+    unsigned long       capabilities;
+    char *              provider;
+    unsigned long       accuracy;
+    unsigned long *     speeds;
+    unsigned long       maximum;
+    fancontrolmode_t    control_mode;
 
     void *driver_code;
     void *driver_ws;
