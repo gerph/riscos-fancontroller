@@ -42,9 +42,10 @@ int fans_final(void)
     fans.fans = NULL;
     fans.fanstailp = &fans.fans;
 
-    while (fan);
+    while (fan)
     {
         fan_t *next = fan->next;
+        fan_announce(fan, 0);
         fan_destroy(fan);
         fan = next;
     }
@@ -125,8 +126,9 @@ int fans_deregister(int fan_id)
 fan_t *fans_findfan(int fan_id)
 {
     fan_t *cur;
+
     for (cur=fans.fans;
-         cur && cur->fan_id == fan_id;
+         cur && cur->fan_id != fan_id;
          cur=cur->next)
         ; /* Search is in the for loop */
 
