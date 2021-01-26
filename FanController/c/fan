@@ -219,6 +219,7 @@ fancontrolmode_t fan_setcontrol(fan_t *fan, fancontrolmode_t mode)
 {
     _kernel_oserror *err;
     fancontrolmode_t request;
+    fancontrolmode_t current;
 
     if (mode == FanControl_Manual ||
         mode == FanControl_Managed)
@@ -244,36 +245,45 @@ fancontrolmode_t fan_setcontrol(fan_t *fan, fancontrolmode_t mode)
         return FanControl_Error;
     }
 
-    if (mode == fan->control_mode)
-    {
-        /* They're already in the mode requested, so there is no need to bother the driver */
-        return mode;
-    }
-
     request = mode;
     if (mode == FanControl_Managed)
     {
         /* Managed is largely informational for interfaces; the driver only sees 'manual' */
         request = FanControl_Manual;
     }
-
-    err = _callx(fan->driver_code, fan->driver_ws,
-                 _INR(0, 3)|_OUT(3),
-                 FanDriver_SetControlMode, fan->fan_id, fan->location_id, mode,
-                 &mode);
-    if (err)
+    current = fan->control_mode;
+    if (current == FanControl_Managed)
     {
-        return FanControl_Error;
+        /* If we know we're in managed mode, then that's the same as manual */
+        current = FanControl_Manual;
     }
 
-    if (mode == FanControl_Managed && mode == FanControl_Manual)
+    /* Only call the driver if we're changing mode */
+    if (request != current)
+    {
+        err = _callx(fan->driver_code, fan->driver_ws,
+                     _INR(0, 3)|_OUT(3),
+                     FanDriver_SetControlMode, fan->fan_id, fan->location_id, mode,
+                     &current);
+        if (err)
+        {
+            return FanControl_Error;
+        }
+    }
+    else
+    {
+        /* If the driver is in the same state, then the current mode is the request */
+        current = request;
+    }
+
+    if (mode == FanControl_Managed && current == FanControl_Manual)
     {
         /* Change to managed so that we keep it as managed */
-        mode = FanControl_Managed;
+        current = FanControl_Managed;
     }
-    fan->control_mode = mode;
+    fan->control_mode = current;
 
-    return mode;
+    return current;
 }
 
 
