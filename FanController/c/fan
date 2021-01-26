@@ -6,7 +6,6 @@
 
 #include <stdlib.h>
 #include <string.h>
-
 #include "callx.h"
 
 #include "FanController.h"
@@ -130,8 +129,12 @@ int fan_setspeed(fan_t *fan, int speed)
 {
     _kernel_oserror *err;
 
-    if (speed > fan->maximum)
-        return FanState_Disconnected;
+    /* If there is a maximum speed, check the supplied speed isn't greater than it */
+    if (fan->maximum)
+    {
+        if (speed > fan->maximum)
+            return FanState_Disconnected;
+    }
 
     /* If there is an accuracy, check that they supplied the speed to that accuracy */
     if (fan->accuracy)
