@@ -94,7 +94,7 @@ typedef enum fancapability_type_e {
 #define FanState_Off            0
 #define FanState_Disconnected   (-1)
 #define FanState_Failed         (-2)
-#define FanState_Automatic 101
+#define FanState_Automatic      101
 
 // Driver operations
 typedef enum fandriver_reason_e {
@@ -109,8 +109,11 @@ typedef enum fandriver_reason_e {
 typedef enum fancontrolmode_e {
     FanControl_Error = -1,
     FanControl_Manual = 0,
-    FanControl_AutomaticPerformance = 1,
-    FanControl_AutomaticNoise = 2
+    FanControl_Managed = 1,
+    //Gap allows there to be other 'Automatic' modes which are all in the 8-16 range,
+    // so that clients might be able to report these all as 'automatic'.
+    FanControl_AutomaticPerformance = 8,
+    FanControl_AutomaticNoise = 9
 } fancontrolmode_t;
 
 // Location change response

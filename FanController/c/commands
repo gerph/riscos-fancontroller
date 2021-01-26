@@ -76,6 +76,14 @@ static idmessages_t external_location[] = {
         { IDMESSAGE_LAST }
     };
 
+static idmessages_t control_modes[] = {
+        { FanControl_Manual, "Manual" },
+        { FanControl_Managed, "Managed" },
+        { FanControl_AutomaticNoise, "Auto (Noise)" },
+        { FanControl_AutomaticPerformance, "Auto (Perf.)" },
+        { IDMESSAGE_LAST }
+    };
+
 
 /*************************************************** Gerph *********
  Function:      lookup_description
@@ -96,6 +104,26 @@ const char *lookup_description(int num, idmessages_t *msgs, const char *def)
     }
     return def;
 }
+
+/*************************************************** Gerph *********
+ Function:      control_name
+ Description:   Decode the control mode into a name
+ Parameters:    mode = control_mode
+ Returns:       pointer to a string (static) which describes it
+ ******************************************************************/
+const char *control_name(fancontrolmode_t mode)
+{
+    static char control_buffer[32];
+    char tempbuffer[16];
+    const char *control;
+
+    sprintf(tempbuffer, "Control#%i", mode);
+    control = lookup_description(mode, control_modes, tempbuffer);
+
+    strcpy(control_buffer, control);
+    return control_buffer;
+}
+
 
 /*************************************************** Gerph *********
  Function:      location_name
@@ -220,6 +248,7 @@ _kernel_oserror *Cmd_FansInfo(void)
     for (fan_id = 0; (fan=fans_findfan_after(fan_id)) != NULL; fan_id = fan->fan_id)
     {
         const char *location;
+        const char *control;
         char speed_buffer[16];
         char *speed_msg = "Unknown";
         int speed = fan_getspeed(fan);
@@ -255,7 +284,9 @@ _kernel_oserror *Cmd_FansInfo(void)
         }
 
         location = location_name(fan->location_id);
-        printf("%5i : %-24s  %-32s  %s\n", fan->fan_id, fan->provider, location, speed_buffer);
+        control = control_name(fan_getcontrol(fan));
+
+        printf("%5i : %-24s  %-32s  %-9s  %s\n", fan->fan_id, fan->provider, location, control, speed_buffer);
     }
     return NULL;
 }
