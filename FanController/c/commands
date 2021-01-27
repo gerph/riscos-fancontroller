@@ -345,7 +345,12 @@ _kernel_oserror *Cmd_FanSpeed(const char *args, int argc)
     }
     else
     {
-        fan_setspeed(fan, atoi(opts.speed));
+        if (fan_getcontrol(fan) != FanControl_Manual)
+            return err_CannotSetSpeed;
+
+        if (fan_setspeed(fan, atoi(opts.speed)) < 0)
+            return err_CannotSetSpeed;
+
     }
 
     return NULL;
