@@ -11,12 +11,22 @@
 
 
 /*************************************************** Gerph *********
- Function:      Cmd_FansInfo
+ Function:      Cmd_Fans
  Description:   Display information about the fans
  Parameters:    none
  Returns:       pointer to an error block if failed
                 NULL if successful
  ******************************************************************/
-_kernel_oserror *Cmd_FansInfo(void);
+_kernel_oserror *Cmd_Fans(void);
+
+/*************************************************** Gerph *********
+ Function:      Cmd_FanSpeed
+ Description:   Display or control the speed of a fan
+ Parameters:    args = argument string
+                argc = Number of arguments
+ Returns:       pointer to an error block if failed
+                NULL if successful
+ ******************************************************************/
+_kernel_oserror *Cmd_FanSpeed(const char *args, int arg);
 
 #endif

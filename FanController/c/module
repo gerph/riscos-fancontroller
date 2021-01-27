@@ -128,8 +128,10 @@ _kernel_oserror *StartupCallback_Handler(_kernel_swi_regs *r, void *pw)
 _kernel_oserror *Mod_Command(const char *arg_string, int argc, int number,
                              void *pw)
 {
-    if (number == CMD_FansInfo)
-        return Cmd_FansInfo();
+    if (number == CMD_Fans)
+        return Cmd_Fans();
+    if (number == CMD_FanSpeed)
+        return Cmd_FanSpeed(arg_string, argc);
     return NULL;
 }
 

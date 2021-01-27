@@ -157,7 +157,11 @@ generic-veneers: StartupCallback_Entry/StartupCallback_Handler
 ;     The command has no handler function present. This is useful for
 ;     creating help-only commands.
 command-keyword-table: Mod_Command
-   FansInfo(max-args: 0,
-            help-text: "Displays information about the fans known to the system.",
-            invalid-syntax: "Syntax: *FanInfo",
-            add-syntax:)
+   Fans(max-args: 0,
+      help-text: "Displays information about the fans known to the system.",
+      invalid-syntax: "Syntax: *Fans",
+      add-syntax:),
+   FanSpeed(min-args:1, max-args: 2,
+      help-text: "Displays or sets the speed of a fan.",
+      invalid-syntax: "Syntax: *FanSpeed <Fan> (<Speed>)",
+      add-syntax:)
