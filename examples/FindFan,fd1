@@ -1,0 +1,37 @@
+REM >FindFan
+REM Find a fan for a given device
+:
+PROCfan_init
+:
+fan_id% = FNfan_find(FanDevice_Chassis)
+IF fan_id% = -1 THEN
+    PRINT "No Chassis fan fitted"
+ELSE
+    SYS "FanController_Speed", fan_id%, -1 TO ,speed%
+    PRINT "Current speed: ";speed%
+ENDIF
+END
+:
+REM PROCfan_init - some simple constants
+DEFPROCfan_init
+REM Fan location constants
+FanDevice_CPU = 0
+FanDevice_GPU = 1
+FanDevice_RAM = 2
+FanDevice_IO = 3
+FanDevice_PSU = 16
+FanDevice_Backplane = 17
+FanDevice_Radiator = 18
+FanDevice_Chassis = 19
+FanDevice_External = 32
+ENDPROC
+:
+REM FNfan_find - return a fan_id for a given device, or -1 if not found
+REM Note: Only returns a single fan if one is found.
+DEFFNfan_find(device_id%)
+LOCAL fan_id%, location_id%
+fan_id% = 0
+REPEAT
+    SYS "FanController_Enumerate", fan_id%,,,"" TO fan_id%, location_id%
+UNTIL fan_id% = -1 OR ((location_id%>>16) AND 255) = device_id%
+=fan_id%

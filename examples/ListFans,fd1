@@ -1,0 +1,23 @@
+REM >ListFans
+REM List the fans we know about
+fan_id% = 0
+REPEAT
+    SYS "FanController_Enumerate", fan_id%,,,"" TO fan_id%, location_id%, capabilities%, provider$, accuracy%, max%, speeds%
+    IF fan_id% <> -1 THEN
+        PRINT"FanID:        ";fan_id%
+        PRINT"Location:     &";~location_id%
+        PRINT"Capabilities: &";~capabilities%
+        PRINT"Provider:     ";provider$
+        PRINT"Accuracy:     ";accuracy%
+        PRINT"Max speed:    ";max%
+        IF speeds% THEN
+            PRINT"Supported speeds:"
+            ofs% = 0
+            WHILE speeds%!ofs% <> -1
+                PRINT"              ";speeds%!ofs%
+                ofs% += 4
+            ENDWHILE
+        ENDIF
+        PRINT
+    ENDIF
+UNTIL fan_id% = -1
