@@ -638,7 +638,7 @@ that the other registers are not populated).</p>
 </use>
 
 <related>
-<!-- <reference type="vector" name="BingleV" /> -->
+<reference type="command" name="FanSpeed" />
 </related>
 
 </swi-definition>
@@ -1144,7 +1144,7 @@ locations.</p>
 
 
 <section title="*Commands">
-<command-definition name="FansInfo"
+<command-definition name="Fans"
                     description="List the fans registered with FanController">
 
 <syntax>
@@ -1156,7 +1156,7 @@ locations.</p>
 </use>
 
 <example>
-<command>*FansInfo</command>
+<command>*Fans</command>
 <systemoutput>
 #1  FArgoN      Chassis (front)         100%
 #2  DeskPi      CPU                     50%
@@ -1166,6 +1166,37 @@ locations.</p>
 
 <related>
  <reference type="swi" name="FanController_Enumerate" />
+</related>
+
+</command-definition>
+
+
+<command-definition name="FanSpeed"
+                    description="Control or display the speed of a fan">
+
+<syntax>
+    <userreplace>fan-id</userreplace>
+    <optional>
+        <userreplace>speed</userreplace>
+    </optional>
+</syntax>
+
+<parameter name="fan-id">Fan identifier number.</parameter>
+<parameter name="speed">Fan speed, as a percentage 1-100, as an RPM over 200, or 0 to turn off.</parameter>
+
+<use>
+<p>The *FanSpeed command can be used to display the speed of a specified fan, or to set its speed.</p>
+</use>
+
+<example>
+<command>*Fan 0</command>
+<systemoutput>
+0 : 100%
+</systemoutput>
+</example>
+
+<related>
+ <reference type="swi" name="FanController_Speed" />
 </related>
 
 </command-definition>
