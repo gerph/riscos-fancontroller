@@ -1241,10 +1241,11 @@ UNTIL fan_id% = -1
 <meta>
  <maintainer>
   <email name="Gerph" address="gerph@gerph.org" />
+  <email name="Chris Johns" address="chris@lessthan3.org.uk" />
  </maintainer>
  <disclaimer>
     <p>
-        &copy; Gerph, 2021.
+        &copy; Gerph, Chris Johns, 2021.
     </p>
  </disclaimer>
 
@@ -1258,6 +1259,10 @@ UNTIL fan_id% = -1
   <revision number="3" author="Gerph" date="24 Jan 2021" title="Managed control mode">
     <change>Introduced 'managed' control mode at Chris' suggestion.</change>
     <change>Control modes have been moved to insert 'managed' control mode.</change>
+  </revision>
+  <revision number="4" author="Chris Johns" date="24 Feb 2021" title="Fan commands update">
+    <change>*FansInfo renamed to *Fans, to match more common usage of informational commands.</change>
+    <change>*FanSpeed added to manually control the fan speed.</change>
   </revision>
  </history>
 

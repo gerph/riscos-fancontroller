@@ -5,6 +5,7 @@ FanController module.
 from riscos.errors import RISCOSSyntheticError
 
 from riscos.modules.pymodules import PyModule
+from riscos.readargs import read_args
 
 from .constants import FanConstants
 
@@ -185,9 +186,22 @@ class FanDescriptor(object):
             raise RISCOSSyntheticError(self.ro, FanConstants.ErrorNumber_CannotSetSpeed,
                                        "Fan speed cannot be set for fan {}".format(self.fan_id))
 
-        # FIXME: Validate the speed against those supported - find the closest?
-        # FIXME: Validate against the maximum
-        # FIXME: Apply accuracy to the speed - find the closest?
+        if self.maximum != 0 and \
+           speed > self.maximum:
+            raise RISCOSSyntheticError(self.ro, FanConstants.ErrorNumber_CannotSetSpeed,
+                                       "Fan speed cannot be set higher than {}".format(self.maximum))
+
+        if self.accuracy and \
+           speed % self.accuracy != 0:
+            raise RISCOSSyntheticError(self.ro, FanConstants.ErrorNumber_CannotSetSpeed,
+                                       "Fan speed {} is not a multiple of {}".format(speed, self.accuracy))
+
+        if self.speeds:
+            # Check that we are one of the supported speeds
+            if speed not in self.speeds:
+                raise RISCOSSyntheticError(self.ro, FanConstants.ErrorNumber_CannotSetSpeed,
+                                           "Fan speed must be set to a supported speed")
+
         regs = self.driver_call(FanConstants.FanDriver_SetSpeed,
                                 rin={3: speed},
                                 rout=[3])
@@ -342,10 +356,15 @@ class FanController(PyModule):
         ]
 
     commands = [
-            ('FansInfo',
+            ('Fans',
              "Displays information about the fans known to the system.",
              0x00000000,
-             'Syntax: *FansInfo')
+             'Syntax: *Fans'),
+
+            ('FanSpeed',
+             "Displays or sets the speed of a fan.",
+             0x00020001,
+             'Syntax: *FanSpeed <Fan> (<Speed>)')
         ]
 
     api_version = 100
@@ -584,26 +603,30 @@ class FanController(PyModule):
 
         return True
 
-    def cmd_fansinfo(self, args):
+    def _speed_string(self, speed):
+        if speed == FanConstants.FanState_Failed:
+            speed_str = "Failed"
+        elif speed == FanConstants.FanState_Disconnected:
+            speed_str = "Disconnected"
+        elif speed < 0:
+            speed_str = "Error code {}".format(speed)
+        elif speed <= 100:
+            speed_str = "{}%".format(speed)
+        elif speed == 101:
+            speed_str = "Automatic"
+        elif speed >= 200:
+            speed_str = "{} RPM".format(speed)
+        else:
+            speed_str = "Code {}".format(speed)
+        return speed_str
+
+    def cmd_fans(self, args):
         """
-        Syntax: *FansInfo
+        Syntax: *Fans
         """
         for fan in self.fans:
             speed = fan.get_speed()
-            if speed == FanConstants.FanState_Failed:
-                speed_str = "Failed"
-            elif speed == FanConstants.FanState_Disconnected:
-                speed_str = "Disconnected"
-            elif speed < 0:
-                speed_str = "Error code {}".format(speed)
-            elif speed <= 100:
-                speed_str = "{}%".format(speed)
-            elif speed == 101:
-                speed_str = "Automatic"
-            elif speed >= 200:
-                speed_str = "{} RPM".format(speed)
-            else:
-                speed_str = "Code {}".format(speed)
+            speed_str = self._speed_string(speed)
 
             control = fan.get_control()
             control_str = fan.control_modes.get(control, "Control {}".format(control))
@@ -613,3 +636,19 @@ class FanController(PyModule):
             self.ro.kernel.writeln("{:5} : {:<24}  {:<32}  {:9}  {}".format(fan.fan_id, fan.provider,
                                                                             location_str, control_str,
                                                                             speed_str))
+
+    def cmd_fanspeed(self, args):
+        """
+        Syntax: *FanSpeed <Fan> (<Speed>)
+        """
+        args = read_args(self.ro, "/A,", args)
+
+        fan_id = int(args[0].value)
+        fan = self.fans.find_fan(fan_id)
+        if args[1]:
+            speed = int(args[1].value)
+            fan.set_speed(speed)
+        else:
+            speed = fan.get_speed()
+            speed_str = self._speed_string(speed)
+            self.ro.kernel.writeln("{} : {}".format(fan_id, speed_str))
