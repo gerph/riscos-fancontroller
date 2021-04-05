@@ -8,7 +8,9 @@
 #include <string.h>
 #include <stdio.h>
 #include "kernel.h"
+#include "swis.h"
 
+#include "modhead.h"
 #include "commands.h"
 #include "fans.h"
 #include "fan.h"
@@ -83,6 +85,55 @@ static idmessages_t control_modes[] = {
         { FanControl_AutomaticPerformance, "Auto (Perf.)" },
         { IDMESSAGE_LAST }
     };
+
+
+/*************************************************** Gerph *********
+ Function:      speed_string
+ Description:   Provide a description string of a speed of a fan
+ Parameters:    fan => the fan
+ Returns:       pointer to the string. This may be to a static buffer
+                within the function so you should use or copy it
+                before calling it again.
+ ******************************************************************/
+ char *speed_string(fan_t *fan)
+{
+    int speed = fan_getspeed(fan);
+    static char speed_buffer[16];
+    char *speed_msg = "Unknown";
+
+    /* FIXME: Really these should be internationalised */
+    if (speed == FanState_Off)
+        speed_msg = "Off";
+    else if (speed == FanState_Failed)
+        speed_msg = "Failed";
+    else if (speed == FanState_Disconnected)
+        speed_msg = "Disconnected";
+    else if (speed == FanState_Automatic)
+        speed_msg = "Automatic";
+    else
+    {
+        /* Ranges */
+        if (speed > 0 && speed <= 100)
+        {
+            sprintf(speed_buffer, "%i%%", speed);
+        }
+        else if (speed > 200)
+        {
+            sprintf(speed_buffer, "%i RPM", speed);
+        }
+        else if (speed < 0)
+        {
+            sprintf(speed_buffer, "Error %i", speed);
+        }
+        else
+        {
+            sprintf(speed_buffer, "Code %i", speed);
+        }
+        speed_msg = speed_buffer;
+    }
+
+    return speed_msg;
+}
 
 
 /*************************************************** Gerph *********
@@ -234,13 +285,13 @@ const char *location_name(unsigned long location_id)
 
 
 /*************************************************** Gerph *********
- Function:      Cmd_FansInfo
+ Function:      Cmd_Fans
  Description:   Display information about the fans
  Parameters:    none
  Returns:       pointer to an error block if failed
                 NULL if successful
  ******************************************************************/
-_kernel_oserror *Cmd_FansInfo(void)
+_kernel_oserror *Cmd_Fans(void)
 {
     int fan_id;
     fan_t *fan;
@@ -249,46 +300,58 @@ _kernel_oserror *Cmd_FansInfo(void)
     {
         const char *location;
         const char *control;
-        char speed_buffer[16];
-        char *speed_msg = "Unknown";
-        int speed = fan_getspeed(fan);
-
-        /* FIXME: Really these should be internationalised */
-        if (speed == FanState_Off)
-            speed_msg = "Off";
-        else if (speed == FanState_Failed)
-            speed_msg = "Failed";
-        else if (speed == FanState_Disconnected)
-            speed_msg = "Disconnected";
-        else if (speed == FanState_Automatic)
-            speed_msg = "Automatic";
-        else
-        {
-            /* Ranges */
-            if (speed > 0 && speed <= 100)
-            {
-                sprintf(speed_buffer, "%i%%", speed);
-            }
-            else if (speed > 200)
-            {
-                sprintf(speed_buffer, "%i RPM", speed);
-            }
-            else if (speed < 0)
-            {
-                sprintf(speed_buffer, "Error %i", speed);
-            }
-            else
-            {
-                sprintf(speed_buffer, "Code %i", speed);
-            }
-            speed_msg = speed_buffer;
-        }
 
         location = location_name(fan->location_id);
         control = control_name(fan_getcontrol(fan));
 
-        printf("%5i : %-24s  %-32s  %-9s  %s\n", fan->fan_id, fan->provider, location, control, speed_msg);
+        printf("%5i : %-24s  %-32s  %-9s  %s\n",
+               fan->fan_id, fan->provider, location, control, speed_string(fan));
     }
     return NULL;
 }
 
+
+/*************************************************** Gerph *********
+ Function:      Cmd_FanSpeed
+ Description:   Display or set the fan speed
+ Parameters:    args = Argument string
+                argc = Number of arguments
+ Returns:       pointer to an error block if failed
+                NULL if successful
+ ******************************************************************/
+_kernel_oserror *Cmd_FanSpeed(const char *args, int argc)
+{
+    _kernel_oserror *e;
+    int fan_id;
+    fan_t *fan;
+    struct opts_s {
+        const char *fan;
+        const char *speed;
+        char data[24];
+    } opts;
+
+    e = _swix(OS_ReadArgs, _INR(0,3), "/A,", args, &opts, sizeof(opts));
+    if (e)
+        return e;
+
+    fan_id = atoi(opts.fan);
+    fan    = fans_findfan(fan_id);
+    if (!fan)
+        return err_BadFan;
+
+    if (!opts.speed)
+    {
+        printf("%i : %s\n", fan_id, speed_string(fan));
+    }
+    else
+    {
+        if (fan_getcontrol(fan) != FanControl_Manual)
+            return err_CannotSetSpeed;
+
+        if (fan_setspeed(fan, atoi(opts.speed)) < 0)
+            return err_CannotSetSpeed;
+
+    }
+
+    return NULL;
+}

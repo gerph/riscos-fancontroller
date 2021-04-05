@@ -11,7 +11,7 @@ COMPONENT  = FanController
 #INITTARGET = inittarget
 
 # Specifies additional targets for clean
-#CLEANTARGET = cleantarget
+CLEANTARGET = cleantarget
 
 # Files to export as part of export_hdr or export_libs
 # To export to the standard C: path, you might use an export like:
@@ -50,6 +50,7 @@ include CModule
 
 # Additional dependencies
 $(OZDIR).module: h.modhead
+$(OZDIR).commands: h.modhead
 
 # Export rules
 # For any files you export with EXPORTS you may need to include an
@@ -64,7 +65,7 @@ ${EXP_C_H}.${COMPONENT}: h.${COMPONENT}
 
 # This clean target removes any module header file that was built.
 cleantarget:
-           ${RM} h.modhead
+           ${DESTROY} h.modhead
 
 #---------------------------------------------------------------------------
 # Dynamic dependencies:
