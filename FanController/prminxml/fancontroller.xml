@@ -189,11 +189,22 @@ failed, either because they are detected as broken, or monitoring reports that t
     Fans may be located in different positions relative to the system which is reporting their state. Each
     fan must supply a location identifier which describes where the fan is located. This is an enumerated set
     which should allow user interfaces give a visual representation, or description, of the fan locations.
-    Fan locations are broken down into three major parts:
+    Fan locations are broken down into three major parts, held in a word:
 </p>
+
+<p>
+    <bitfield-table>
+        <bit number="0-7">Location identifier, dependant on the device type</bit>
+        <bit number="8-15">Sequence number, dependant on the device type</bit>
+        <bit number="16-23">Device type</bit>
+        <bit number="24-31">Reserved, must be 0</bit>
+    </bitfield-table>
+</p>
+
 <p>
     <list type="unordered">
-        <item><p>Device - this indicates the area or entity that the fan is associated with. This allows the user
+        <item><p>Device type - this indicates the area or entity that the fan is associated with.
+              This allows the user
               to identify what type of device the fan is trying to cool.
               The following device types are defined:</p>
               <p>
