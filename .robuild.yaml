@@ -1,0 +1,63 @@
+%YAML 1.0
+---
+
+# Example .robuild.yml file
+
+# Source is optional (NYI), and should be a URL to source the content from
+#source: <url>
+
+# Defines a list of jobs which will be performed.
+# Only 1 job will currently be executed.
+jobs:
+  build:
+    # Env defines system variables which will be used within the environment.
+    # Multiple variables may be assigned.
+    env:
+      "Sys$Environment": ROBuild
+      "BUILD32": 1
+
+    # Directory to change to before running script
+    #dir: <working directory>
+
+    # Commands which should be executed to perform the build.
+    # The build will terminate if any command returns a non-0 return code or an error.
+    script:
+      # Set up some build environment bits
+      - cdir $.Build
+      - cdir $.Build.Export
+      - cdir $.Build.Export.C
+      - cdir $.Build.Install
+      - set Build$Dir $.Build
+      - set Exports$Dir <Build$Dir>.Export
+      - set CExport$Dir <Exports$Dir>.C
+      - set Install$Dir <Build$Dir>.Install
+      - set C$Path <CExport$Dir>.,<C$Path>
+      - set Locale UK
+
+      # Maybe this lot should actually be in a makefile?
+      - dir FanController
+      - amu -f Makefile export
+      - amu -f Makefile ram
+      # Documentation build doesn't currently work on Pyromaniac (missing xsltproc)
+      #- '|amu -f Makefile docs'
+      - dir ^
+
+      - dir FanDriverDummy
+      - amu -f Makefile ram
+      - dir ^
+
+      - cdir Artifacts
+      - copy FanController.rm32.FanController Artifacts.* ~CV
+      - copy FanDriverDummy.rm32.FanDriverDummy Artifacts.* ~CV
+      - cdir Artifacts.h
+      - copy <CExport$Dir>.h.FanController Artifacts.h.FanController ~CV
+      - copy examples Artifacts.examples ~CVR
+      - copy LICENSE Artifacts.* ~CV
+
+    # Outputs from the build are defined in artifacts
+    # These are a list of artifacts to report directories or files.
+    # Only a single item is currently supported.
+    artifacts:
+      # Each element of the artifacts should have a path key, which gives the file or
+      # directory to return.
+      - path: Artifacts

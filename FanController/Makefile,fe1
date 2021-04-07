@@ -43,7 +43,10 @@ OBJS       = o.modhead \
 			 o.fans
 
 # Documentation source files
+ifdef __crosscompile
+# Docs don't build on RISC OS yet
 DOCSRC = prminxml.fancontroller/xml
+endif
 
 
 include CModule
