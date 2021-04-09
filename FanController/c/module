@@ -14,6 +14,7 @@
 #include "commands.h"
 #include "fans.h"
 #include "fan.h"
+#include "pollword.h"
 
 /* API version we understand */
 #define API_VERSION (100)
@@ -36,6 +37,7 @@ void announce(int started)
     {
         _swix(OS_ServiceCall, _IN(1),
                               Service_FanControllerDying);
+        pollword_trigger(trigger_dying);
     }
 }
 
@@ -246,7 +248,7 @@ _kernel_oserror *SWI_Info(int number, _kernel_swi_regs *r, void *pw)
 
 /*************************************************** Gerph *********
  Function:      SWI_Speed
- Description:   Return version number of the API we conform to
+ Description:   Read or control the speed of the fan
  Parameters:    number = SWI number
                 r -> registers block on entry for update
                     =>  R0 = fan id to return
@@ -284,7 +286,7 @@ _kernel_oserror *SWI_Speed(int number, _kernel_swi_regs *r, void *pw)
 
 /*************************************************** Gerph *********
  Function:      SWI_Configure
- Description:   Return version number of the API we conform to
+ Description:   Configure the parameters for a Fan
  Parameters:    number = SWI number
                 r -> registers block on entry for update
                     => R0 = Fan identifier to configure
@@ -344,8 +346,45 @@ _kernel_oserror *SWI_Configure(int number, _kernel_swi_regs *r, void *pw)
 }
 
 /*************************************************** Gerph *********
+ Function:      SWI_TaskPollWord
+ Description:   Register/Deregister a pollword
+ Parameters:    number = SWI number
+                r -> registers block on entry for update
+                    => R0 = Pointer to pollword
+                       R1 = Bit to set when controller dies (or -1)
+                       R2 = Bit to set when controller dies (or -1)
+                       R3 = Bit to set when controller dies (or -1)
+                    <= ARP
+                pw -> module private word
+ Returns:       pointer to an error block if failed
+                NULL if successful
+ ******************************************************************/
+_kernel_oserror *SWI_TaskPollWord(int number, _kernel_swi_regs *r, void *pw)
+{
+    pollword_t pollword     = (pollword_t)r->r[0];
+    int bit_dying           = r->r[1];
+    int bit_fanregistration = r->r[2];
+    int bit_fanchange       = r->r[3];
+
+    if (bit_dying == -1 &&
+        bit_fanregistration == -1 &&
+        bit_fanchange == -1)
+    {
+        pollword_deregister(pollword);
+        return NULL;
+    }
+    else
+    {
+        if (pollword_register(pollword, bit_dying, bit_fanregistration, bit_fanchange))
+            return err_TaskPollWordFailed;
+        return NULL;
+    }
+}
+
+
+/*************************************************** Gerph *********
  Function:      SWI_Register
- Description:   Return version number of the API we conform to
+ Description:   Register a new fan with the FanController
  Parameters:    number = SWI number
                 r -> registers block on entry for update
                     => R0 = Pointer to driver code entry point
@@ -404,7 +443,7 @@ _kernel_oserror *SWI_Register(int number, _kernel_swi_regs *r, void *pw)
 
 /*************************************************** Gerph *********
  Function:      SWI_Deregister
- Description:   Return version number of the API we conform to
+ Description:   Deregister a fan from the FanController
  Parameters:    number = SWI number
                 r -> registers block on entry for update
                     => R0 = Fan identifier to deregister

@@ -12,6 +12,7 @@
 #include "FanController.h"
 #include "fan.h"
 #include "str.h"
+#include "pollword.h"
 
 
 /*************************************************** Gerph *********
@@ -331,4 +332,5 @@ void fan_announce(fan_t *fan, int started)
                           Service_FanControllerFanChanged,
                           started ? Service_FanControllerFanChanged_Added
                                   : Service_FanControllerFanChanged_Removed);
+    pollword_trigger(trigger_fanregistration);
 }
