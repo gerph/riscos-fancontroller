@@ -1,0 +1,51 @@
+/*******************************************************************
+ * File:        str_test
+ * Purpose:     Test that the 'str' functions work properly
+ * Author:      Gerph
+ * Date:        14 Apr 2021
+ ******************************************************************/
+
+#include <assert.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+#include "str.h"
+#include "fortify.h"
+
+
+void test_strdup(void)
+{
+    void *s;
+
+    s = strdup("Hello");
+    assert(s != NULL);
+    assert(strcmp(s, "Hello") == 0);
+
+    free(s); /* Shouldn't fail */
+
+    s = strdup(NULL);
+    assert(s == NULL);
+}
+
+
+void test_strndup(void)
+{
+    void *s;
+
+    s = strndup("Hello", 3);
+    assert(s != NULL);
+    assert(strcmp(s, "Hel") == 0);
+}
+
+int main(void)
+{
+    test_strdup();
+    test_strndup();
+
+    /* Because we used assert, if we reached here, we passed */
+    printf("Passed tests\n");
+
+    Fortify_LeaveScope();
+
+    return EXIT_SUCCESS;
+}
