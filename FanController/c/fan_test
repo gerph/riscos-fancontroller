@@ -12,219 +12,11 @@
 #include "kernel.h"
 #include "fan.h"
 #include "fortify.h"
+#include "response.h"
 
 #define PROVIDER_NAME "TestProvider"
 
 _kernel_oserror err_unexpected_call = { 1, "Unexpected call to fan_code" };
-
-typedef enum response_regtype_e {
-    rrt_unused, /* The value is not assigned */
-    rrt_word,   /* The value to compare is an unsigned/signed long/int */
-    rrt_string  /* The value to compare is a string */
-    /* value 3 undefined */
-} response_regtype_t;
-
-typedef union response_register_u {
-    void *value;
-    int sint;
-    unsigned long ulong;
-    char *string;
-} response_register_t;
-
-#define MAXREGISTER     (9)
-#define MAX_RESPONSES   (32)
-
-typedef struct response_s {
-    struct response_input_s {
-        unsigned long valid_registers;
-        response_register_t rr[MAXREGISTER + 1];
-    } input;
-
-    struct response_output_s {
-        unsigned long valid_registers;
-        response_register_t rr[MAXREGISTER + 1];
-
-        _kernel_oserror *err;
-    } output;
-} response_t;
-
-/* Response register shortcuts aliases */
-#define rr_sint(_r)     rr[(_r)].sint
-#define rr_ulong(_r)    rr[(_r)].ulong
-#define rr_string(_r)   rr[(_r)].string
-
-typedef struct response_data_s {
-    int tail;
-    int head;
-
-    response_t responses[MAX_RESPONSES];
-} response_data_t;
-
-
-/*************************************************** Gerph *********
- Function:      response_remove
- Description:   Remove the next entry from the responses lists
- Parameters:    none
- Returns:       pointer to a response_t or NULL if there's none left.
- ******************************************************************/
-response_t *response_remove(response_data_t *rd)
-{
-    response_t *response;
-    if (rd->head == rd->tail)
-        return NULL;
-
-    response = &rd->responses[rd->tail];
-    rd->tail = (rd->tail + 1) % MAX_RESPONSES;
-    return response;
-}
-
-
-/*************************************************** Gerph *********
- Function:      response_add
- Description:   Add an entry to the responses lists
- Parameters:    rd-> the response structure to populate
- Returns:       pointer to a response_t or NULL if there's none left.
- ******************************************************************/
-response_t *response_add(response_data_t *rd)
-{
-    int next_index = (rd->head + 1) % MAX_RESPONSES;
-    response_t *response;
-    /* If we ran out of space for the responses, we can report it as an assertion */
-    assert(next_index == rd->tail);
-
-    response = &rd->responses[rd->head];
-
-    /* Clear the structure */
-    memset(response, sizeof(*response), 0);
-
-
-    rd->head = next_index;
-    return response;
-}
-
-
-/*************************************************** Gerph *********
- Function:      response_input
- Description:   Set an input register in a response
- Parameters:    resp-> the response to populate
-                regtype = register type to expect
-                rn = register number
-                value = the value assigned
- Returns:       none
- ******************************************************************/
-void response_input(response_t *resp, response_regtype_t regtype,
-                    int rn, void *value)
-{
-    assert(rn <= MAXREGISTER);
-    resp->input.valid_registers &= ~(3ul<<(rn*2));
-    resp->input.valid_registers |= (regtype<<(rn*2));
-    resp->input.rr[rn].value = value;
-}
-
-
-/*************************************************** Gerph *********
- Function:      response_output
- Description:   Set an output register in a response
- Parameters:    resp-> the response to populate
-                regtype = register type to expect
-                rn = register number
-                value = the value assigned
- Returns:       none
- ******************************************************************/
-void response_output(response_t *resp, response_regtype_t regtype,
-                    int rn, void *value)
-{
-    assert(rn <= MAXREGISTER);
-    resp->output.valid_registers &= ~(3<<(rn*2));
-    resp->output.valid_registers |= (regtype<<(rn*2));
-    resp->output.rr[rn].value = value;
-}
-
-
-/*************************************************** Gerph *********
- Function:      response_error
- Description:   Set the error block to return in a response
- Parameters:    resp-> the response to populate
-                err-> the error block to return, or NULL to prevent error.
- Returns:       none
- ******************************************************************/
-void response_error(response_t *resp, _kernel_oserror *err)
-{
-    resp->output.err = err;
-}
-
-
-/*************************************************** Gerph *********
- Function:      response_check
- Description:   Check the inputs of a response, and assert when failing
- Parameters:    resp-> the response to check against
-                regs-> the SWI registers to check
- Returns:       none
- ******************************************************************/
-void response_check(response_t *resp, _kernel_swi_regs *regs)
-{
-    int rn;
-    for (rn = 0; rn<=MAXREGISTER; rn++)
-    {
-        response_regtype_t rt = (response_regtype_t) ((resp->input.valid_registers >> (rn*2)) & 3);
-        response_register_t *rr = &resp->input.rr[rn];
-        switch (rt)
-        {
-            case rrt_word:
-                if (((unsigned long)regs->r[rn]) != rr->ulong)
-                {
-                    printf("Mismatch of register %i: Expected &%08lx != Got &%08lx\n",
-                           rn, rr->ulong, ((unsigned long)regs->r[rn]));
-                    assert("Register mismatch word" == NULL);
-                }
-                break;
-
-            case rrt_string:
-                if (strcmp( ((char *)regs->r[rn]), rr->string ) != 0)
-                {
-                    printf("Mismatch of register %i: Expected '%s' != Got '%s'\n",
-                           rn, rr->string, ((char *)regs->r[rn]));
-                    assert("Register mismatch string" == NULL);
-                }
-                break;
-
-            /* Other values are not matched */
-        }
-    }
-}
-
-
-/*************************************************** Gerph *********
- Function:      response_update
- Description:   Update the registers with the outputs requested
- Parameters:    resp-> the response to update with
-                regs-> the SWI registers to update
- Returns:       pointer to error block, if any, or NULL otherwise
- ******************************************************************/
-_kernel_oserror *response_update(response_t *resp, _kernel_swi_regs *regs)
-{
-    int rn;
-    for (rn = 0; rn<=MAXREGISTER; rn++)
-    {
-        response_regtype_t rt = (response_regtype_t) ((resp->output.valid_registers >> (rn*2)) & 3);
-        response_register_t *rr = &resp->output.rr[rn];
-        switch (rt)
-        {
-            case rrt_word:
-                regs->r[rn] = (int)rr->ulong;
-                break;
-
-            case rrt_string:
-                /* This is actually exactly the same as the rrt_word */
-                regs->r[rn] = (int)rr->string;
-                break;
-
-            /* Other values are not matched */
-        }
-    }
-
-    return resp->output.err;
-}
 
 /* Data for the fan response */
 response_data_t fan_responses;
@@ -239,6 +31,54 @@ _kernel_oserror *fan_code(_kernel_swi_regs *regs, void *pw)
 
     response_check(resp, regs);
     return response_update(resp, regs);
+}
+
+#include <stdarg.h>
+#include "callx.h"
+
+typedef _kernel_oserror *(*callx_code)(_kernel_swi_regs *regs, void *pw);
+
+_kernel_oserror *_callx(void *func, void *pw, unsigned int flags, ...)
+{
+    _kernel_oserror *err;
+    _kernel_swi_regs regs;
+    va_list ap;
+    int rn;
+    callx_code code = (callx_code)func;
+
+    va_start(ap, flags);
+
+    /* Validation of what we support */
+    assert(!(flags & (1<<11)) || "Must not use a _BLOCK" != NULL);
+    assert(!(flags & (15<<16)) || "Must not use a _RETURN" != NULL);
+    assert(!(flags & (1<<21)) || "Must not use a _FLAGS" != NULL);
+
+    memset(&regs, sizeof(regs), 0);
+
+    /* Process the input arguments */
+    for (rn=0; rn<10; rn++)
+    {
+        if (flags & _IN(rn))
+        {
+            int value = va_arg(ap, int);
+            regs.r[rn] = value;
+        }
+    }
+
+    err = code(&regs, pw);
+
+    /* Process the output arguments */
+    for (rn=0; rn<10; rn++)
+    {
+        if (flags & _OUT(rn))
+        {
+            int *value = va_arg(ap, int *);
+            *value = regs.r[rn];
+        }
+    }
+
+    va_end(ap);
+    return err;
 }
 
 
@@ -261,9 +101,41 @@ void test_create_destroy(void)
 }
 
 
+void test_speed(void)
+{
+    fan_t *s;
+
+    printf("Setup...\n");
+    s = fan_create(0, /* location id */
+                   FanCapability_SupportsManual, /* capabilities */
+                   PROVIDER_NAME, /* Provider name */
+                   0, /* accuracy */
+                   NULL, /* speeds */
+                   0, /* max speed */
+                   (void*)fan_code,
+                   NULL);
+
+    printf("Testing...\n");
+    {
+        response_t *r = response_add(&fan_responses);
+        response_input(r, rrt_word, 0, (void*)(int)FanDriver_SetSpeed);
+        response_input(r, rrt_word, 1, (void*)s->fan_id);
+        response_input(r, rrt_word, 2, (void*)0);
+        response_input(r, rrt_word, 3, (void*)10);
+        response_output(r, rrt_word, 3, (void*)10);
+
+        fan_setspeed(s, 10);
+    }
+
+    printf("Teardown...\n");
+    fan_destroy(s);
+}
+
+
 int main(void)
 {
     test_create_destroy();
+    test_speed();
 
     /* Because we used assert, if we reached here, we passed */
     printf("Passed tests\n");
