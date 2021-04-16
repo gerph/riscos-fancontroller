@@ -48,6 +48,8 @@ ifdef __crosscompile
 DOCSRC = prminxml.fancontroller/xml
 endif
 
+FORTIFY = no
+
 
 include CModule
 

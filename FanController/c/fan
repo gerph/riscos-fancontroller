@@ -8,6 +8,7 @@
 #include <string.h>
 
 #include "callx.h"
+#include "fortify.h"
 
 #include "FanController.h"
 #include "fan.h"
