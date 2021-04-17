@@ -133,6 +133,13 @@ int fan_setspeed(fan_t *fan, int speed)
 {
     _kernel_oserror *err;
 
+    if (fan->control_mode >= FanControl_AutomaticPerformance &&
+        fan->control_mode <= FanControl_AutomaticHighest)
+    {
+        /* It's an automatic mode; so we cannot select a speed */
+        return FanState_Disconnected;
+    }
+
     /* If there is a maximum speed, check the supplied speed isn't greater than it */
     if (fan->maximum != FanSpeed_Maximum_Unlimited)
     {

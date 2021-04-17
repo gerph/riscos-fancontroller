@@ -43,9 +43,9 @@ void test_create_destroy(void)
     s = fan_create(0, /* location id */
                    FanCapability_SupportsManual, /* capabilities */
                    PROVIDER_NAME, /* Provider name */
-                   0, /* accuracy */
+                   FanSpeed_Accuracy_Unknown, /* accuracy */
                    NULL, /* speeds */
-                   0, /* max speed */
+                   FanSpeed_Maximum_Unlimited, /* max speed */
                    (void*)fan_code,
                    NULL);
     assert(s != NULL);
@@ -63,9 +63,9 @@ void test_speed_generic(void)
     s = fan_create(0, /* location id */
                    FanCapability_SupportsManual, /* capabilities */
                    PROVIDER_NAME, /* Provider name */
-                   0, /* accuracy */
+                   FanSpeed_Accuracy_Unknown, /* accuracy */
                    NULL, /* speeds */
-                   0, /* max speed */
+                   FanSpeed_Maximum_Unlimited, /* max speed */
                    (void*)fan_code,
                    NULL);
     assert(s != NULL);
@@ -79,7 +79,7 @@ void test_speed_generic(void)
         response_input(r, rrt_word, 3, (void*)10);
         response_output(r, rrt_word, 3, (void*)10);
 
-        fan_setspeed(s, 10);
+        assert(fan_setspeed(s, 10) == 10);
 
         responses_complete(&fan_responses);
     }
@@ -97,7 +97,7 @@ void test_speed_maximum(void)
     s = fan_create(0, /* location id */
                    FanCapability_SupportsManual, /* capabilities */
                    PROVIDER_NAME, /* Provider name */
-                   0, /* accuracy */
+                   FanSpeed_Accuracy_Unknown, /* accuracy */
                    NULL, /* speeds */
                    3000, /* max speed */
                    (void*)fan_code,
@@ -161,9 +161,9 @@ void test_speed_values(void)
     s = fan_create(0, /* location id */
                    FanCapability_SupportsManual, /* capabilities */
                    PROVIDER_NAME, /* Provider name */
-                   0, /* accuracy */
+                   FanSpeed_Accuracy_Unknown, /* accuracy */
                    speeds, /* speeds */
-                   0, /* max speed */
+                   FanSpeed_Maximum_Unlimited, /* max speed */
                    (void*)fan_code,
                    NULL);
     assert(s != NULL);
@@ -271,13 +271,123 @@ void test_speed_accuracy(void)
 }
 
 
+void test_control_mode_manual(void)
+{
+    fan_t *s;
+
+    printf("[test_control_mode_manual] Setup...\n");
+    s = fan_create(0, /* location id */
+                   FanCapability_SupportsManual, /* capabilities */
+                   PROVIDER_NAME, /* Provider name */
+                   FanSpeed_Accuracy_Unknown, /* accuracy */
+                   NULL, /* speeds */
+                   FanSpeed_Maximum_Unlimited, /* max speed */
+                   (void*)fan_code,
+                   NULL);
+    assert(s != NULL);
+    printf("Testing...\n");
+
+    printf("Cannot select Automatic if not capable\n");
+    {
+        assert(fan_setcontrol(s, FanControl_AutomaticPerformance) == FanControl_Error);
+
+        responses_complete(&fan_responses);
+    }
+
+    printf("Can select Manual if capable\n");
+    {
+        response_t *r = responses_add(&fan_responses);
+        response_input(r, rrt_word, 0, (void*)(int)FanDriver_SetControlMode);
+        response_input(r, rrt_word, 1, (void*)s->fan_id);
+        response_input(r, rrt_word, 2, (void*)0);
+        response_input(r, rrt_word, 3, (void*)FanControl_Manual);
+        response_output(r, rrt_word, 3, (void*)FanControl_Manual);
+
+        assert(fan_setcontrol(s, FanControl_Manual) == FanControl_Manual);
+
+        responses_complete(&fan_responses);
+    }
+
+    printf("Can select Managed if capable of manual\n");
+    {
+        /* No call to the fan code, because it's just the manual mode to it */
+        assert(fan_setcontrol(s, FanControl_Managed) == FanControl_Managed);
+
+        responses_complete(&fan_responses);
+    }
+
+    printf("Teardown...\n");
+    fan_destroy(s);
+}
+
+
+void test_control_mode_automatic(void)
+{
+    fan_t *s;
+
+    printf("[test_control_mode_automatic] Setup...\n");
+    s = fan_create(0, /* location id */
+                   FanCapability_SupportsAutomatic, /* capabilities */
+                   PROVIDER_NAME, /* Provider name */
+                   FanSpeed_Accuracy_Unknown, /* accuracy */
+                   NULL, /* speeds */
+                   FanSpeed_Maximum_Unlimited, /* max speed */
+                   (void*)fan_code,
+                   NULL);
+    assert(s != NULL);
+    printf("Testing...\n");
+
+    printf("Can select Automatic if capable\n");
+    {
+        response_t *r = responses_add(&fan_responses);
+        response_input(r, rrt_word, 0, (void*)(int)FanDriver_SetControlMode);
+        response_input(r, rrt_word, 1, (void*)s->fan_id);
+        response_input(r, rrt_word, 2, (void*)0);
+        response_input(r, rrt_word, 3, (void*)(int)FanControl_AutomaticPerformance);
+        response_output(r, rrt_word, 3, (void*)(int)FanControl_AutomaticPerformance);
+
+        assert(fan_setcontrol(s, FanControl_AutomaticPerformance) == FanControl_AutomaticPerformance);
+
+        responses_complete(&fan_responses);
+    }
+
+    printf("Cannot select Manual if not capable\n");
+    {
+        assert(fan_setcontrol(s, FanControl_Manual) == FanControl_Error);
+
+        responses_complete(&fan_responses);
+    }
+
+    printf("Cannot select Managed if not capable of manual\n");
+    {
+        assert(fan_setcontrol(s, FanControl_Managed) == FanControl_Error);
+
+        responses_complete(&fan_responses);
+    }
+
+    printf("Cannot select the speed of fans in automatic mode\n");
+    {
+        assert(fan_setspeed(s, 10) == FanState_Disconnected);
+
+        responses_complete(&fan_responses);
+    }
+
+    printf("Teardown...\n");
+    fan_destroy(s);
+}
+
+
 int main(void)
 {
     test_create_destroy();
+
     test_speed_generic();
     test_speed_maximum();
     test_speed_values();
     test_speed_accuracy();
+
+    test_control_mode_manual();
+    test_control_mode_automatic();
 
     /* Because we used assert, if we reached here, we passed */
     printf("Passed tests\n");
