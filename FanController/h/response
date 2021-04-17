@@ -56,20 +56,29 @@ typedef struct response_data_s {
 
 
 /*************************************************** Gerph *********
- Function:      response_remove
+ Function:      responses_remove
  Description:   Remove the next entry from the responses lists
  Parameters:    none
  Returns:       pointer to a response_t or NULL if there's none left.
  ******************************************************************/
-response_t *response_remove(response_data_t *rd);
+response_t *responses_remove(response_data_t *rd);
 
 /*************************************************** Gerph *********
- Function:      response_add
+ Function:      responses_add
  Description:   Add an entry to the responses lists
  Parameters:    rd-> the response structure to populate
  Returns:       pointer to a response_t or NULL if there's none left.
  ******************************************************************/
-response_t *response_add(response_data_t *rd);
+response_t *responses_add(response_data_t *rd);
+
+/*************************************************** Gerph *********
+ Function:      responses_complete
+ Description:   Check that the responses have all been exhausted after
+                test execution
+ Parameters:    resp-> the response to populate
+ Returns:       none
+ ******************************************************************/
+void responses_complete(response_data_t *rd);
 
 
 /*************************************************** Gerph *********
@@ -126,5 +135,6 @@ void response_check(response_t *resp, _kernel_swi_regs *regs);
  Returns:       pointer to error block, if any, or NULL otherwise
  ******************************************************************/
 _kernel_oserror *response_update(response_t *resp, _kernel_swi_regs *regs);
+
 
 #endif

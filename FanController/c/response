@@ -14,12 +14,12 @@
 #include "response.h"
 
 /*************************************************** Gerph *********
- Function:      response_remove
+ Function:      responses_remove
  Description:   Remove the next entry from the responses lists
  Parameters:    none
  Returns:       pointer to a response_t or NULL if there's none left.
  ******************************************************************/
-response_t *response_remove(response_data_t *rd)
+response_t *responses_remove(response_data_t *rd)
 {
     response_t *response;
     if (rd->head == rd->tail)
@@ -32,12 +32,12 @@ response_t *response_remove(response_data_t *rd)
 
 
 /*************************************************** Gerph *********
- Function:      response_add
+ Function:      responses_add
  Description:   Add an entry to the responses lists
  Parameters:    rd-> the response structure to populate
  Returns:       pointer to a response_t or NULL if there's none left.
  ******************************************************************/
-response_t *response_add(response_data_t *rd)
+response_t *responses_add(response_data_t *rd)
 {
     int next_index = (rd->head + 1) % MAX_RESPONSES;
     response_t *response;
@@ -52,6 +52,23 @@ response_t *response_add(response_data_t *rd)
 
     rd->head = next_index;
     return response;
+}
+
+
+/*************************************************** Gerph *********
+ Function:      responses_complete
+ Description:   Check that the responses have all been exhausted after
+                test execution
+ Parameters:    resp-> the response to populate
+ Returns:       none
+ ******************************************************************/
+void responses_complete(response_data_t *rd)
+{
+    if (rd->head != rd->tail)
+    {
+        /* FIXME: Report how many were unused? */
+        assert("Responses were not all exhausted (API was not called)" == NULL);
+    }
 }
 
 

@@ -37,7 +37,8 @@ LIBS       = ${CLIB}  # C:Asm.o.libAsm
 OBJS       = o.fan \
              o.fan_test \
              o.str \
-             o.response
+             o.response \
+             o.callx_user
 
 # Space separated list of XML files for building documentation.
 #DOCSRC = <prm-in-xml-sources>

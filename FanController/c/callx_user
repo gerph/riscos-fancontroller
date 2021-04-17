@@ -1,0 +1,78 @@
+/*******************************************************************
+ * File:        user_callx
+ * Purpose:     User space test interface for user of the _callx
+ *              function.
+ *
+ *              Essentially you call the _callx code as normal in the
+ *              code that's being tested, and the C function `code`
+ *              is called with the parameters `(regs, pw)`, with the
+ *              registers set as expected. This avoids having to use
+ *              CMHG generated veneers and allows it to be used in
+ *              user space.
+ *
+ *              No actual testing is performed on the parameters
+ *              passed in and out of the function; that's the remit
+ *              of the called function.
+ * Author:      Gerph
+ * Date:        17 Apr 2021
+ ******************************************************************/
+
+#include <assert.h>
+#include <stdlib.h>
+#include <stdarg.h>
+#include "callx.h"
+
+typedef _kernel_oserror *(*callx_code)(_kernel_swi_regs *regs, void *pw);
+
+/*************************************************** Gerph *********
+ Function:      _callx
+ Description:   Fake version of _callx which actually called the func
+                directly, but as a `func(regs, pw)` call.
+ Parameters:    func-> the function to call
+                pw = the private word to pass
+                flags = the _swix style flags to use
+                ... any more parameters to populate the registers block with
+ Returns:       the _kernel_oserror* returned by the func.
+ ******************************************************************/
+_kernel_oserror *_callx(void *func, void *pw, unsigned int flags, ...)
+{
+    _kernel_oserror *err;
+    _kernel_swi_regs regs;
+    va_list ap;
+    int rn;
+    callx_code code = (callx_code)func;
+
+    va_start(ap, flags);
+
+    /* Validation of what we support */
+    assert(!(flags & (1<<11)) || "Must not use a _BLOCK" != NULL);
+    assert(!(flags & (15<<16)) || "Must not use a _RETURN" != NULL);
+    assert(!(flags & (1<<21)) || "Must not use a _FLAGS" != NULL);
+
+    memset(&regs, sizeof(regs), 0);
+
+    /* Process the input arguments */
+    for (rn=0; rn<10; rn++)
+    {
+        if (flags & _IN(rn))
+        {
+            int value = va_arg(ap, int);
+            regs.r[rn] = value;
+        }
+    }
+
+    err = code(&regs, pw);
+
+    /* Process the output arguments */
+    for (rn=0; rn<10; rn++)
+    {
+        if (flags & _OUT(rn))
+        {
+            int *value = va_arg(ap, int *);
+            *value = regs.r[rn];
+        }
+    }
+
+    va_end(ap);
+    return err;
+}

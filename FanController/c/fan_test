@@ -23,7 +23,7 @@ response_data_t fan_responses;
 
 _kernel_oserror *fan_code(_kernel_swi_regs *regs, void *pw)
 {
-    response_t *resp = response_remove(&fan_responses);
+    response_t *resp = responses_remove(&fan_responses);
     if (resp == NULL)
     {
         assert("Underflow in fan_code calls (unexpected call to fan_code)" == NULL);
@@ -33,59 +33,12 @@ _kernel_oserror *fan_code(_kernel_swi_regs *regs, void *pw)
     return response_update(resp, regs);
 }
 
-#include <stdarg.h>
-#include "callx.h"
-
-typedef _kernel_oserror *(*callx_code)(_kernel_swi_regs *regs, void *pw);
-
-_kernel_oserror *_callx(void *func, void *pw, unsigned int flags, ...)
-{
-    _kernel_oserror *err;
-    _kernel_swi_regs regs;
-    va_list ap;
-    int rn;
-    callx_code code = (callx_code)func;
-
-    va_start(ap, flags);
-
-    /* Validation of what we support */
-    assert(!(flags & (1<<11)) || "Must not use a _BLOCK" != NULL);
-    assert(!(flags & (15<<16)) || "Must not use a _RETURN" != NULL);
-    assert(!(flags & (1<<21)) || "Must not use a _FLAGS" != NULL);
-
-    memset(&regs, sizeof(regs), 0);
-
-    /* Process the input arguments */
-    for (rn=0; rn<10; rn++)
-    {
-        if (flags & _IN(rn))
-        {
-            int value = va_arg(ap, int);
-            regs.r[rn] = value;
-        }
-    }
-
-    err = code(&regs, pw);
-
-    /* Process the output arguments */
-    for (rn=0; rn<10; rn++)
-    {
-        if (flags & _OUT(rn))
-        {
-            int *value = va_arg(ap, int *);
-            *value = regs.r[rn];
-        }
-    }
-
-    va_end(ap);
-    return err;
-}
-
 
 void test_create_destroy(void)
 {
     void *s;
 
+    printf("[test_create_destroy]\n");
     printf("Creating fan...\n");
     s = fan_create(0, /* location id */
                    FanCapability_SupportsManual, /* capabilities */
@@ -101,11 +54,11 @@ void test_create_destroy(void)
 }
 
 
-void test_speed(void)
+void test_speed_generic(void)
 {
     fan_t *s;
 
-    printf("Setup...\n");
+    printf("[test_speed_generic] Setup...\n");
     s = fan_create(0, /* location id */
                    FanCapability_SupportsManual, /* capabilities */
                    PROVIDER_NAME, /* Provider name */
@@ -117,7 +70,7 @@ void test_speed(void)
 
     printf("Testing...\n");
     {
-        response_t *r = response_add(&fan_responses);
+        response_t *r = responses_add(&fan_responses);
         response_input(r, rrt_word, 0, (void*)(int)FanDriver_SetSpeed);
         response_input(r, rrt_word, 1, (void*)s->fan_id);
         response_input(r, rrt_word, 2, (void*)0);
@@ -125,6 +78,64 @@ void test_speed(void)
         response_output(r, rrt_word, 3, (void*)10);
 
         fan_setspeed(s, 10);
+
+        responses_complete(&fan_responses);
+    }
+
+    printf("Teardown...\n");
+    fan_destroy(s);
+}
+
+
+void test_speed_maximum(void)
+{
+    fan_t *s;
+
+    printf("[test_speed_maximum] Setup...\n");
+    s = fan_create(0, /* location id */
+                   FanCapability_SupportsManual, /* capabilities */
+                   PROVIDER_NAME, /* Provider name */
+                   0, /* accuracy */
+                   NULL, /* speeds */
+                   3000, /* max speed */
+                   (void*)fan_code,
+                   NULL);
+
+    printf("Testing...\n");
+
+    /* In range */
+    {
+        response_t *r = responses_add(&fan_responses);
+        response_input(r, rrt_word, 0, (void*)(int)FanDriver_SetSpeed);
+        response_input(r, rrt_word, 1, (void*)s->fan_id);
+        response_input(r, rrt_word, 2, (void*)0);
+        response_input(r, rrt_word, 3, (void*)10);
+        response_output(r, rrt_word, 3, (void*)10);
+
+        assert(fan_setspeed(s, 10) == 10);
+
+        responses_complete(&fan_responses);
+    }
+
+    /* Upper limit of the range */
+    {
+        response_t *r = responses_add(&fan_responses);
+        response_input(r, rrt_word, 0, (void*)(int)FanDriver_SetSpeed);
+        response_input(r, rrt_word, 1, (void*)s->fan_id);
+        response_input(r, rrt_word, 2, (void*)0);
+        response_input(r, rrt_word, 3, (void*)3000);
+        response_output(r, rrt_word, 3, (void*)3000);
+
+        assert(fan_setspeed(s, 3000) == 3000);
+
+        responses_complete(&fan_responses);
+    }
+
+    /* Ourside range */
+    {
+        assert(fan_setspeed(s, 3001) == FanState_Disconnected);
+
+        responses_complete(&fan_responses);
     }
 
     printf("Teardown...\n");
@@ -135,7 +146,8 @@ void test_speed(void)
 int main(void)
 {
     test_create_destroy();
-    test_speed();
+    test_speed_generic();
+    test_speed_maximum();
 
     /* Because we used assert, if we reached here, we passed */
     printf("Passed tests\n");
