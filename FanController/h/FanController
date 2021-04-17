@@ -73,6 +73,8 @@ typedef enum fanlocation_e {
 
 // Fan speed
 #define FanSpeed_Accuracy_Unknown (0)
+#define FanSpeed_Maximum_Unlimited (0)
+#define FanSpeedList_Terminator (0xFFFFFFFFlu)
 
 // Fan capabilties:
 #define FanCapability_SupportsManual (1<<0)

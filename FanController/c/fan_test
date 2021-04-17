@@ -48,6 +48,7 @@ void test_create_destroy(void)
                    0, /* max speed */
                    (void*)fan_code,
                    NULL);
+    assert(s != NULL);
 
     printf("Destroying fan...\n");
     fan_destroy(s);
@@ -67,6 +68,7 @@ void test_speed_generic(void)
                    0, /* max speed */
                    (void*)fan_code,
                    NULL);
+    assert(s != NULL);
 
     printf("Testing...\n");
     {
@@ -100,6 +102,7 @@ void test_speed_maximum(void)
                    3000, /* max speed */
                    (void*)fan_code,
                    NULL);
+    assert(s != NULL);
 
     printf("Testing...\n");
 
@@ -131,9 +134,134 @@ void test_speed_maximum(void)
         responses_complete(&fan_responses);
     }
 
-    /* Ourside range */
+    /* Outside range */
     {
         assert(fan_setspeed(s, 3001) == FanState_Disconnected);
+
+        responses_complete(&fan_responses);
+    }
+
+    printf("Teardown...\n");
+    fan_destroy(s);
+}
+
+
+void test_speed_values(void)
+{
+    unsigned long speeds[] = {
+            1000,
+            2000,
+            2500,
+            3000,
+            FanSpeedList_Terminator
+        };
+    fan_t *s;
+
+    printf("[test_speed_values] Setup...\n");
+    s = fan_create(0, /* location id */
+                   FanCapability_SupportsManual, /* capabilities */
+                   PROVIDER_NAME, /* Provider name */
+                   0, /* accuracy */
+                   speeds, /* speeds */
+                   0, /* max speed */
+                   (void*)fan_code,
+                   NULL);
+    assert(s != NULL);
+    printf("Testing...\n");
+
+    /* In range */
+    printf("Testing in speed values\n");
+    {
+        response_t *r = responses_add(&fan_responses);
+        response_input(r, rrt_word, 0, (void*)(int)FanDriver_SetSpeed);
+        response_input(r, rrt_word, 1, (void*)s->fan_id);
+        response_input(r, rrt_word, 2, (void*)0);
+        response_input(r, rrt_word, 3, (void*)1000);
+        response_output(r, rrt_word, 3, (void*)1000);
+
+        assert(fan_setspeed(s, 1000) == 1000);
+
+        responses_complete(&fan_responses);
+    }
+
+    /* Upper limit of the range */
+    printf("Testing highest speed value\n");
+    {
+        response_t *r = responses_add(&fan_responses);
+        response_input(r, rrt_word, 0, (void*)(int)FanDriver_SetSpeed);
+        response_input(r, rrt_word, 1, (void*)s->fan_id);
+        response_input(r, rrt_word, 2, (void*)0);
+        response_input(r, rrt_word, 3, (void*)3000);
+        response_output(r, rrt_word, 3, (void*)3000);
+
+        assert(fan_setspeed(s, 3000) == 3000);
+
+        responses_complete(&fan_responses);
+    }
+
+    /* Outside range */
+    printf("Testing not in speed values\n");
+    {
+        assert(fan_setspeed(s, 2700) == FanState_Disconnected);
+
+        responses_complete(&fan_responses);
+    }
+
+    printf("Teardown...\n");
+    fan_destroy(s);
+}
+
+
+void test_speed_accuracy(void)
+{
+    fan_t *s;
+
+    printf("[test_speed_values] Setup...\n");
+    s = fan_create(0, /* location id */
+                   FanCapability_SupportsManual, /* capabilities */
+                   PROVIDER_NAME, /* Provider name */
+                   10, /* accuracy */
+                   NULL, /* speeds */
+                   100, /* max speed */
+                   (void*)fan_code,
+                   NULL);
+    assert(s != NULL);
+    printf("Testing...\n");
+
+    /* In range */
+    printf("Testing in speed values\n");
+    {
+        response_t *r = responses_add(&fan_responses);
+        response_input(r, rrt_word, 0, (void*)(int)FanDriver_SetSpeed);
+        response_input(r, rrt_word, 1, (void*)s->fan_id);
+        response_input(r, rrt_word, 2, (void*)0);
+        response_input(r, rrt_word, 3, (void*)10);
+        response_output(r, rrt_word, 3, (void*)10);
+
+        assert(fan_setspeed(s, 10) == 10);
+
+        responses_complete(&fan_responses);
+    }
+
+    /* Upper limit of the range */
+    printf("Testing highest speed value\n");
+    {
+        response_t *r = responses_add(&fan_responses);
+        response_input(r, rrt_word, 0, (void*)(int)FanDriver_SetSpeed);
+        response_input(r, rrt_word, 1, (void*)s->fan_id);
+        response_input(r, rrt_word, 2, (void*)0);
+        response_input(r, rrt_word, 3, (void*)100);
+        response_output(r, rrt_word, 3, (void*)100);
+
+        assert(fan_setspeed(s, 100) == 100);
+
+        responses_complete(&fan_responses);
+    }
+
+    /* Outside range */
+    printf("Testing not a multiple\n");
+    {
+        assert(fan_setspeed(s, 27) == FanState_Disconnected);
 
         responses_complete(&fan_responses);
     }
@@ -148,6 +276,8 @@ int main(void)
     test_create_destroy();
     test_speed_generic();
     test_speed_maximum();
+    test_speed_values();
+    test_speed_accuracy();
 
     /* Because we used assert, if we reached here, we passed */
     printf("Passed tests\n");
