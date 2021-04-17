@@ -20,6 +20,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <string.h>
 #include "callx.h"
 
 typedef _kernel_oserror *(*callx_code)(_kernel_swi_regs *regs, void *pw);
