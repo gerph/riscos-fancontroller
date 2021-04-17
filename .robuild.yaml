@@ -36,6 +36,11 @@ jobs:
 
       # Maybe this lot should actually be in a makefile?
       - dir FanController
+      - amu -f MakefileTestStr
+      - aif32.str_test
+      - amu -f MakefileTestFan
+      - aif32.fan_test
+
       - amu -f Makefile export
       - amu -f Makefile ram
       # Documentation build doesn't currently work on Pyromaniac (missing xsltproc)
