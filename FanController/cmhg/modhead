@@ -166,3 +166,8 @@ command-keyword-table: Mod_Command
       help-text: "Displays or sets the speed of a fan.",
       invalid-syntax: "Syntax: *FanSpeed <Fan> (<Speed>)",
       add-syntax:)
+
+; The module service entry will be called to process services. You are
+; strongly recommended to include the numbers of the services you wish to
+; handle.
+service-call-handler: Mod_Service Service_FanControllerFanChangedState

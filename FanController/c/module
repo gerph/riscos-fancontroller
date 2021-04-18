@@ -86,6 +86,28 @@ _kernel_oserror *Mod_Final(int fatal, int podule_base, void *pw)
     return NULL;
 }
 
+
+/***************************************************************************
+ * Function:     Mod_Service
+ * Description:  Service call handler routine. All services which are being
+ *               received by the module will be passed to this routine.
+ * Parameters:   service = service call number
+ *               r       = pointer to register block on entry
+ *               pw      = private word for module
+ * On exit:      Update register values on return by updating r.
+ **************************************************************************/
+void Mod_Service(int service, _kernel_swi_regs *r, void *pw)
+{
+    /* We need to trap the change state when the driver notifies clients that
+     * the fan has an error.
+     */
+    if (service == Service_FanControllerFanChangedState)
+    {
+        pollword_trigger(trigger_fanchange);
+    }
+}
+
+
 /***************************************************************************
  * Function:     StartupCallback_Handler
  * Description:  Generic handler function
