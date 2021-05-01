@@ -5,8 +5,9 @@
 **/aif32/
 **/o/
 **/o32/
-**/oz/
-**/oz32/
-**/rm/
-**/rm32/
-**/h/modhead
+**/oz/*
+**/oz32/*
+**/rm/*
+**/rm32/*
+FanController/h/modhead
+FanDriverDummy/h/modhead
