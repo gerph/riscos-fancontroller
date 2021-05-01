@@ -17,7 +17,7 @@
 #include "pollword.h"
 
 /* API version we understand */
-#define API_VERSION (100)
+#define API_VERSION (101)
 
 
 /*************************************************** Gerph *********
@@ -374,8 +374,8 @@ _kernel_oserror *SWI_Configure(int number, _kernel_swi_regs *r, void *pw)
                 r -> registers block on entry for update
                     => R0 = Pointer to pollword
                        R1 = Bit to set when controller dies (or -1)
-                       R2 = Bit to set when controller dies (or -1)
-                       R3 = Bit to set when controller dies (or -1)
+                       R2 = Bit to set when fans (de)registered (or -1)
+                       R3 = Bit to set when fans error (or -1)
                     <= ARP
                 pw -> module private word
  Returns:       pointer to an error block if failed

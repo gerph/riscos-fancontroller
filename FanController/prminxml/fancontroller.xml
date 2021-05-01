@@ -403,6 +403,80 @@ failed, either because they are detected as broken, or monitoring reports that t
     </p>
 </subsection>
 
+<subsection title="Change notifications">
+    <p>
+        The FanController will issue notifications as its state changes. This allows other modules
+        and applications to recognise and handle these transitions. For modules, service calls are
+        issued for the state transitions. For applications, a pollword may be updated to indicate
+        that the state of the fans has changed. Strictly, modules could also use the pollword
+        system, although it would be less efficient than simply using the pollwords.
+    </p>
+
+    <p>
+        The <reference type="swi" name="FanController_TaskPollWord"/> interface allows applications
+        to recognise events by one of three bits being set - a bit which indicates that the controller
+        has died, a bit which indicates that the registrations have changed, and a bit which indicates
+        that fan error state has changed. These notifications are coarse (they do not indicate which
+        fan identifier has been changed) because pollwords are limited to only 32bits, and it is
+        therefore not possible to communicate more information. Applications should act appropriately
+        to locate whether the devices they are interested in have changed.
+    </p>
+
+    <p>
+        After the FanController module has started, it will
+        issue <reference type="service" name="FanController_Started"/> on a callback. This allows
+        drivers to register themselves with the FanController. Services are delivered to modules
+        in order of the module registration, and the state of the system may change between
+        initialisations, so fan drivers (and other users of FanController) must not rely on being
+        given the same fan identifier between initialisations.
+    </p>
+
+    <p>
+        When the FanController module is killed, it will issue <reference type="service" name="FanController_Dying"/>.
+        At that point, all drivers have been automatically deregistered.
+        Fan drivers should take note that they are no longer registered, and users of the fan system
+        should forget all fan identifiers. Application pollwords will be updated to indicate
+        that the module has died, and applications seeing this bit indicated should treat all
+        fan identifiers as invalid and begin any fan identification process as necessary.
+    </p>
+
+    <p>
+        When a new fan is registered or an existing fan is deregistered, the FanController will
+        issue <reference type="service" name="FanController_FanChanged"/>. This allows modules
+        to recognise the coming and going of fan drivers and to update their state appropriately.
+        Application pollwords will be updated to indicate that the registrations have changed.
+        Applications should enumerate the fans to identify whether the fan(s) that they are
+        monitoring have been affected. In many cases, this may just be a new fan driver being loaded,
+        or an existing fan driver being re-initialised. In the former case, the enumeration will
+        show up the new fan. In the latter case, fans being monitored may still be present in the
+        enumeration, but will have changed their fan identifier.
+    </p>
+
+    <p>
+        When a fan driver identifies an error state (or that an error state has been resolved) it
+        should issue <reference type="service" name="FanController_FanChangedState"/>. This notifies
+        any modules that the fan is (or is no longer) reporting an error. This state change is
+        reported by the fan driver directly, as it will recognise the error state and can report
+        the information to the FanController and other modules through the service.
+        The FanController will record this error state notification, and will update the application
+        pollwords to report the error condition. Applications should note that the error state may
+        have already been resolved by the time they receive the notification through the pollword.
+    </p>
+
+    <p>
+        Fan speed changes are not notified through the service calls. Speed changes could happen
+        many times per second, and can affect every single device. As such, notifications would
+        themselves become a significant part of the system's processing. Additionally, the fan
+        speed may be automatically managed by a fan controller, and the speed be only a value
+        that the driver can read. Such cases make it impossible to accurately report that the speed
+        has changed. Applications and modules wishing to track fans should provide a configurable
+        cadence for polling for the fan speed to allow an appropriate trade off between system
+        utilisation and responsiveness. In many cases, a polling period measured in seconds will
+        have a negligable effect on performance, and interface updates at that speed would be
+        acceptable to most users.
+    </p>
+</subsection>
+
 </section>
 
 
@@ -528,7 +602,7 @@ normally.</p>
                 re-entrant="no">
 
 <exit>
- <register-use number="0">Version number of the API * 100 (1.00 for this version)</register-use>
+ <register-use number="0">Version number of the API * 100 (1.01 for this version)</register-use>
 </exit>
 
 <use>
@@ -762,6 +836,53 @@ that the other registers are not populated).</p>
 </related>
 
 </swi-definition>
+
+
+<swi-definition name="FanController_TaskPollWord"
+                number="10085"
+                description="Register or deregister a pollword for FanController to update"
+                irqs="undefined"
+                fiqs="enabled"
+                processor-mode="SVC"
+                re-entrant="no">
+
+<entry>
+ <register-use number="0">Pointer to word-aligned pollword</register-use>
+ <register-use number="1">Bit number (0-31) to set when FanController dies, or -1 to set no bit</register-use>
+ <register-use number="2">Bit number (0-31) to set when a driver is registered or deregistered, or -1 to set no bit</register-use>
+ <register-use number="3">Bit number (0-31) to set when a driver changes its error state, or -1 to set no bit</register-use>
+</entry>
+<exit>
+ <register-use number="0-3" state="preserved"/>
+</exit>
+
+<use>
+<p>
+    This SWI is used to register or deregister a pollword with the FanController module.
+    If all the registration bits are supplied as -1, the pollword will be deregistered.
+    The pollword address supplied in R0 must be in globally addressable memory (such as the relocatable module area), and must be writeable in SVC mode.
+</p>
+<p>
+    When the FanController reaches one of the three events (FanController death, driver registration/deregistration, or driver error state change) it will update the pollword by setting the bit requested.
+    Applications may use the pollword in their <reference type="swi" name="Wimp_Poll" href="?"/> calls.
+    On servicing the pollword event, it is the responsibility of the application to clear the pollword
+    bits.
+</p>
+
+<p>
+    This SWI was added in API version 1.01.
+</p>
+</use>
+
+<related>
+ <reference type="swi" name="FanController_Deregister" />
+ <reference type="service" name="FanController_FanChanged" />
+ <reference type="entry" name="FanDriver" />
+ <reference type="error" name="RegisterFailed" />
+</related>
+
+</swi-definition>
+
 
 <swi-definition name="FanController_Register"
                 number="10090"
@@ -1274,6 +1395,11 @@ UNTIL fan_id% = -1
   <revision number="4" author="Chris Johns" date="24 Feb 2021" title="Fan commands update">
     <change>*FansInfo renamed to *Fans, to match more common usage of informational commands.</change>
     <change>*FanSpeed added to manually control the fan speed.</change>
+  </revision>
+  <revision number="5" author="Gerph" date="01 May 2021" title="Service and pollword update">
+    <change>Notifications documentation added to the Technical Details section.</change>
+    <change>SWI FanController_TaskPollWord added.</change>
+    <change>API version updated to 1.01.</change>
   </revision>
  </history>
 
