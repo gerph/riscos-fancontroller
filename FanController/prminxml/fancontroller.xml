@@ -408,11 +408,11 @@ failed, either because they are detected as broken, or monitoring reports that t
 
 <section title="Service calls">
 <service-definition name="FanController_Started"
-                    number="10080"
+                    number="810C0"
                     description="Annoucement that the FanController module has been started">
 <entry>
  <register-use number="0">API version * 100</register-use>
- <register-use number="1">Service number (&hex;10080)</register-use>
+ <register-use number="1">Service number (&hex;810C0)</register-use>
 </entry>
 
 <exit>
@@ -438,10 +438,10 @@ failed, either because they are detected as broken, or monitoring reports that t
 </service-definition>
 
 <service-definition name="FanController_Dying"
-                    number="10081"
+                    number="810C1"
                     description="Announcement that FanController is shutting down">
 <entry>
- <register-use number="1">Service number (&hex;10081)</register-use>
+ <register-use number="1">Service number (&hex;810C1)</register-use>
 </entry>
 
 <exit>
@@ -461,11 +461,11 @@ to the module. It is should be assumed that all registered fans are no longer re
 </service-definition>
 
 <service-definition name="FanController_FanChanged"
-                    number="10082"
+                    number="810C2"
                     description="Announcement of a change in the registered fans">
 <entry>
  <register-use number="0">Fan identifier</register-use>
- <register-use number="1">Service number (&hex;10082)</register-use>
+ <register-use number="1">Service number (&hex;810C2)</register-use>
  <register-use number="2">1 if a fan has been registered, 0 if a fan has been deregistered</register-use>
 </entry>
 
@@ -488,11 +488,11 @@ registration or deregistration.</p>
 </service-definition>
 
 <service-definition name="FanController_FanChangedState"
-                    number="10083"
+                    number="810C3"
                     description="A change has occurred in the state of a fan state">
 <entry>
  <register-use number="0">Fan identifier</register-use>
- <register-use number="1">Service number (&hex;10082)</register-use>
+ <register-use number="1">Service number (&hex;810C2)</register-use>
  <register-use number="2">Fan state, as a speed - either a negative value or a speed</register-use>
 </entry>
 
@@ -520,7 +520,7 @@ normally.</p>
 
 <section title="SWI calls">
 <swi-definition name="FanController_Version"
-                number="10080"
+                number="5A1C0"
                 description="Read the API version for the FanController"
                 irqs="undefined"
                 fiqs="enabled"
@@ -528,7 +528,7 @@ normally.</p>
                 re-entrant="no">
 
 <exit>
- <register-use number="0">Version number of the API * 100 (1.00 for this version)</register-use>
+ <register-use number="0">Version number of the API * 100 (1.01 for this version)</register-use>
 </exit>
 
 <use>
@@ -543,7 +543,7 @@ may introduce new features to the API. Major versions will be incompatible.</p>
 </swi-definition>
 
 <swi-definition name="FanController_Enumerate"
-                number="10081"
+                number="5A1C1"
                 description="Enumerate the fans known to FanController"
                 irqs="undefined"
                 fiqs="enabled"
@@ -587,7 +587,7 @@ that the other registers are not populated).</p>
 </swi-definition>
 
 <swi-definition name="FanController_Info"
-                number="10082"
+                number="5A1C2"
                 description="Read information about a fan"
                 irqs="undefined"
                 fiqs="enabled"
@@ -626,7 +626,7 @@ that the other registers are not populated).</p>
 
 
 <swi-definition name="FanController_Speed"
-                number="10083"
+                number="5A1C3"
                 description="Read or set the speed of a fan"
                 irqs="undefined"
                 fiqs="enabled"
@@ -655,7 +655,7 @@ that the other registers are not populated).</p>
 </swi-definition>
 
 <swi-definition name="FanController_Configure"
-                number="10084"
+                number="5A1C4"
                 description="Configure the operation of the fan"
                 irqs="undefined"
                 fiqs="enabled"
@@ -692,7 +692,7 @@ that the other registers are not populated).</p>
 </swi-definition>
 
 <swi-definition name="FanController_Configure"
-                number="10084"
+                number="5A1C4"
                 reason="0"
                 reasonname="ControlMode"
                 description="Configure the type of control of the fan"
@@ -728,7 +728,7 @@ that the other registers are not populated).</p>
 </swi-definition>
 
 <swi-definition name="FanController_Configure"
-                number="10084"
+                number="5A1C4"
                 reason="1"
                 reasonname="ChangeLocation"
                 description="Change the location identifier reported by the fan"
@@ -764,7 +764,7 @@ that the other registers are not populated).</p>
 </swi-definition>
 
 <swi-definition name="FanController_Register"
-                number="10090"
+                number="5A1D0"
                 description="Register a fan with FanController"
                 irqs="undefined"
                 fiqs="enabled"
@@ -807,7 +807,7 @@ in the list of enumerated fans, and may be controlled once this call has returne
 </swi-definition>
 
 <swi-definition name="FanController_Deregister"
-                number="10091"
+                number="5A1D1"
                 description="Deregister a fan with FanController"
                 irqs="undefined"
                 fiqs="enabled"
@@ -1045,7 +1045,7 @@ locations.</p>
 <section title="Error messages">
 
 <error-definition name="BadFan"
-                  number="10040"
+                  number="821900"
                   description="Invalid fan identifier to FanController"
                   >
 
@@ -1062,7 +1062,7 @@ locations.</p>
 </error-definition>
 
 <error-definition name="BadConfigure"
-                  number="10041"
+                  number="821901"
                   description="Invalid FanController_Configure reason code"
                   >
 
@@ -1077,7 +1077,7 @@ locations.</p>
 </error-definition>
 
 <error-definition name="BadControlMode"
-                  number="10042"
+                  number="821902"
                   description="Invalid control mode supplied to FanController_Configure 0"
                   >
 
@@ -1092,7 +1092,7 @@ locations.</p>
 </error-definition>
 
 <error-definition name="RegisterFailed"
-                  number="10043"
+                  number="821903"
                   description="Registration of fan could not be performed"
                   >
 
@@ -1107,7 +1107,7 @@ locations.</p>
 </error-definition>
 
 <error-definition name="InitFailed"
-                  number="10044"
+                  number="821904"
                   description="Initialisation of the module failed"
                   >
 
@@ -1121,7 +1121,7 @@ locations.</p>
 </error-definition>
 
 <error-definition name="CannotSetSpeed"
-                  number="10050"
+                  number="821910"
                   description="Fan speed request cannot be met"
                   >
 
@@ -1136,8 +1136,8 @@ locations.</p>
 </error-definition>
 
 <error-definition name="CannotSetLocation"
-                  number="10051"
-                  description="Fan speed request cannot be met"
+                  number="821911"
+                  description="Fan location cannot be changed"
                   >
 
 <use>
@@ -1274,6 +1274,10 @@ UNTIL fan_id% = -1
   <revision number="4" author="Chris Johns" date="24 Feb 2021" title="Fan commands update">
     <change>*FansInfo renamed to *Fans, to match more common usage of informational commands.</change>
     <change>*FanSpeed added to manually control the fan speed.</change>
+  </revision>
+  <revision number="5" author="Gerph" date="02 Jun 2021" title="Registrations applied">
+    <change>Registrations of SWIs, error base, and services have been applied.</change>
+    <change>API version number increased to 1.01, as the SWI interface has changed its number.</change>
   </revision>
  </history>
 

@@ -4,8 +4,8 @@
 #include "FanController.h"
 
 ; You should give your module a sensible name which describes its purpose
-; both accurately and concisely. You must register any module names you use
-; if they are to be distributed.
+; both accurately and concisely.
+; Name is registered
 title-string: FanDriverDummy
 
 ; The help-string is the name that is displayed to the user in *Help Modules

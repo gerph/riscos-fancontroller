@@ -16,7 +16,7 @@
 #include "fan.h"
 
 /* API version we understand */
-#define API_VERSION (100)
+#define API_VERSION (101)
 
 
 /*************************************************** Gerph *********
