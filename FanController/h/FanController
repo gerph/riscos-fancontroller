@@ -73,6 +73,8 @@ typedef enum fanlocation_e {
 
 // Fan speed
 #define FanSpeed_Accuracy_Unknown (0)
+#define FanSpeed_Maximum_Unlimited (0)
+#define FanSpeedList_Terminator (0xFFFFFFFFlu)
 
 // Fan capabilties:
 #define FanCapability_SupportsManual (1<<0)
@@ -110,10 +112,11 @@ typedef enum fancontrolmode_e {
     FanControl_Error = -1,
     FanControl_Manual = 0,
     FanControl_Managed = 1,
-    //Gap allows there to be other 'Automatic' modes which are all in the 8-16 range,
+    // Gap allows there to be other 'Automatic' modes which are all in the 8-16 range,
     // so that clients might be able to report these all as 'automatic'.
     FanControl_AutomaticPerformance = 8,
-    FanControl_AutomaticNoise = 9
+    FanControl_AutomaticNoise = 9,
+    FanControl_AutomaticHighest = 15 /* Not a real mode; automatic modes are all reserved */
 } fancontrolmode_t;
 
 // Location change response

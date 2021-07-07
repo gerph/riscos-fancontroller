@@ -8,6 +8,7 @@
 #include <string.h>
 
 #include "callx.h"
+#include "fortify.h"
 
 #include "FanController.h"
 #include "fan.h"
@@ -51,10 +52,10 @@ fan_t *fan_create(unsigned long   location_id,
     fan->location_id = location_id;
     fan->capabilities = capabilities;
     fan->accuracy = accuracy;
-    if (fan->speeds)
+    if (speeds)
     {
         int nspeeds;
-        for (nspeeds = 0; speeds[nspeeds] != -1; nspeeds++)
+        for (nspeeds = 0; speeds[nspeeds] != FanSpeedList_Terminator; nspeeds++)
             ; /* We're just counting, so this is all in the list */
         fan->speeds = malloc(sizeof(unsigned long) * (nspeeds + 1));
         if (fan->speeds == NULL)
@@ -133,22 +134,29 @@ int fan_setspeed(fan_t *fan, int speed)
 {
     _kernel_oserror *err;
 
+    if (fan->control_mode >= FanControl_AutomaticPerformance &&
+        fan->control_mode <= FanControl_AutomaticHighest)
+    {
+        /* It's an automatic mode; so we cannot select a speed */
+        return FanState_Disconnected;
+    }
+
     /* If there is a maximum speed, check the supplied speed isn't greater than it */
-    if (fan->maximum)
+    if (fan->maximum != FanSpeed_Maximum_Unlimited)
     {
         if (speed > fan->maximum)
             return FanState_Disconnected;
     }
 
     /* If there is an accuracy, check that they supplied the speed to that accuracy */
-    if (fan->accuracy)
+    if (fan->accuracy != FanSpeed_Accuracy_Unknown)
     {
         if (speed % fan->accuracy)
             return FanState_Disconnected;
     }
 
     /* If there are only certain speeds supported, check against them */
-    if (fan->speeds)
+    if (fan->speeds != NULL)
     {
         unsigned long *speed_ptr = fan->speeds;
         int found = 0;

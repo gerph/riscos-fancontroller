@@ -1,0 +1,140 @@
+/*******************************************************************
+ * File:        response.h
+ * Purpose:     Mocking of SWI-type responses (for testing)
+ * Author:      Gerph
+ * Date:        16 Apr 2021
+ ******************************************************************/
+
+#ifndef RESPONSE_H
+#define RESPONSE_H
+
+#include "kernel.h"
+
+
+typedef enum response_regtype_e {
+    rrt_unused, /* The value is not assigned */
+    rrt_word,   /* The value to compare is an unsigned/signed long/int */
+    rrt_string  /* The value to compare is a string */
+    /* value 3 undefined */
+} response_regtype_t;
+
+typedef union response_register_u {
+    void *value;
+    int sint;
+    unsigned long ulong;
+    char *string;
+} response_register_t;
+
+#define MAXREGISTER     (9)
+#define MAX_RESPONSES   (32)
+
+typedef struct response_s {
+    struct response_input_s {
+        unsigned long valid_registers;
+        response_register_t rr[MAXREGISTER + 1];
+    } input;
+
+    struct response_output_s {
+        unsigned long valid_registers;
+        response_register_t rr[MAXREGISTER + 1];
+
+        _kernel_oserror *err;
+    } output;
+} response_t;
+
+/* Response register shortcuts aliases */
+#define rr_sint(_r)     rr[(_r)].sint
+#define rr_ulong(_r)    rr[(_r)].ulong
+#define rr_string(_r)   rr[(_r)].string
+
+typedef struct response_data_s {
+    int tail;
+    int head;
+
+    response_t responses[MAX_RESPONSES];
+} response_data_t;
+
+
+/*************************************************** Gerph *********
+ Function:      responses_remove
+ Description:   Remove the next entry from the responses lists
+ Parameters:    none
+ Returns:       pointer to a response_t or NULL if there's none left.
+ ******************************************************************/
+response_t *responses_remove(response_data_t *rd);
+
+/*************************************************** Gerph *********
+ Function:      responses_add
+ Description:   Add an entry to the responses lists
+ Parameters:    rd-> the response structure to populate
+ Returns:       pointer to a response_t or NULL if there's none left.
+ ******************************************************************/
+response_t *responses_add(response_data_t *rd);
+
+/*************************************************** Gerph *********
+ Function:      responses_complete
+ Description:   Check that the responses have all been exhausted after
+                test execution
+ Parameters:    resp-> the response to populate
+ Returns:       none
+ ******************************************************************/
+void responses_complete(response_data_t *rd);
+
+
+/*************************************************** Gerph *********
+ Function:      response_input
+ Description:   Set an input register in a response
+ Parameters:    resp-> the response to populate
+                regtype = register type to expect
+                rn = register number
+                value = the value assigned
+ Returns:       none
+ ******************************************************************/
+void response_input(response_t *resp, response_regtype_t regtype,
+                    int rn, void *value);
+
+
+/*************************************************** Gerph *********
+ Function:      response_output
+ Description:   Set an output register in a response
+ Parameters:    resp-> the response to populate
+                regtype = register type to expect
+                rn = register number
+                value = the value assigned
+ Returns:       none
+ ******************************************************************/
+void response_output(response_t *resp, response_regtype_t regtype,
+                     int rn, void *value);
+
+
+/*************************************************** Gerph *********
+ Function:      response_error
+ Description:   Set the error block to return in a response
+ Parameters:    resp-> the response to populate
+                err-> the error block to return, or NULL to prevent error.
+ Returns:       none
+ ******************************************************************/
+void response_error(response_t *resp, _kernel_oserror *err);
+
+
+/*************************************************** Gerph *********
+ Function:      response_check
+ Description:   Check the inputs of a response, and assert when failing
+ Parameters:    resp-> the response to check against
+                regs-> the SWI registers to check
+ Returns:       none
+ ******************************************************************/
+void response_check(response_t *resp, _kernel_swi_regs *regs);
+
+
+/*************************************************** Gerph *********
+ Function:      response_update
+ Description:   Update the registers with the outputs requested
+ Parameters:    resp-> the response to update with
+                regs-> the SWI registers to update
+ Returns:       pointer to error block, if any, or NULL otherwise
+ ******************************************************************/
+_kernel_oserror *response_update(response_t *resp, _kernel_swi_regs *regs);
+
+
+#endif

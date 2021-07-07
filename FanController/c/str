@@ -10,6 +10,7 @@
 #include <ctype.h>
 
 #ifdef FORTIFY
+#include <stdio.h>
 #include "fortify.h"
 #endif
 
@@ -17,12 +18,15 @@
 /*********************************************** <c> Gerph *********
  Function:     strdup
  Description:  Copy a string into a new block of memory
- Parameters:   x-> string to copy
+ Parameters:   x-> string to copy, or NULL to return NULL
  Returns:      pointer to new copy of string, or NULL if failed
  ******************************************************************/
 char *(strdup)(char const *x)
 {
-  char *n=malloc(strlen(x)+1);
+  char *n;
+  if (x == NULL)
+    return NULL;
+  n = malloc(strlen(x)+1);
   if (n!=NULL) strcpy(n,x);
   return n;
 }
@@ -30,13 +34,17 @@ char *(strdup)(char const *x)
 /*********************************************** <c> Gerph *********
  Function:     strndup
  Description:  Duplicate a string to a particular length
- Parameters:   str-> string to copy
+ Parameters:   str-> string to copy, or NULL to return NULL
                n = number of CHARACTERS to copy
  Returns:      pointer to new string
  ******************************************************************/
 char *(strndup)(char const *str,int n)
 {
-  char *s=malloc(n+1);
+  char *s;
+  if (str == NULL)
+    return NULL;
+
+  s = malloc(n+1);
   if (s!=NULL)
   {
     strncpy(s,str,n); s[n]='\0';

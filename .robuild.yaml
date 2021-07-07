@@ -36,6 +36,11 @@ jobs:
 
       # Maybe this lot should actually be in a makefile?
       - dir FanController
+      - amu -f MakefileTestStr
+      - /aif32.str_test
+      - amu -f MakefileTestFan
+      - /aif32.fan_test
+
       - amu -f Makefile export
       - amu -f Makefile ram
       # Documentation build doesn't currently work on Pyromaniac (missing xsltproc)
@@ -45,6 +50,15 @@ jobs:
       - dir FanDriverDummy
       - amu -f Makefile ram
       - dir ^
+
+      # We should try loading the modules and running the examples to make sure that they work
+      - rmload FanController.rm32.FanController
+      - rmload FanDriverDummy.rm32.FanDriverDummy
+      # Check that the Fans command doesn't fail
+      - fans
+      # Run the BASIC programs to check that we don't fail
+      - /examples.ListFans
+      - /examples.FindFan
 
       - cdir Artifacts
       - copy FanController.rm32.FanController Artifacts.* ~CV
