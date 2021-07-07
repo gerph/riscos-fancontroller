@@ -155,6 +155,7 @@ typedef enum fanconfigure_reason_e {
 #define FanController_Info (FanController_0 + 2)
 #define FanController_Speed (FanController_0 + 3)
 #define FanController_Configure (FanController_0 + 4)
+#define FanController_TaskPollWord (FanController_0 + 5)
 #define FanController_Register (FanController_0 + 16)
 #define FanController_Deregister (FanController_0 + 17)
 #endif

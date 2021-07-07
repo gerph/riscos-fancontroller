@@ -1,0 +1,54 @@
+/*******************************************************************
+ * File:     pollword.h
+ * Purpose:  Pollword management for FanController
+ * Author:   Gerph
+ ******************************************************************/
+
+#ifndef POLLWORD_H
+#define POLLWORD_H
+
+/* Pollword value from the user */
+typedef unsigned long *pollword_t;
+
+typedef enum pollword_trigger_s {
+    trigger_dying,
+    trigger_fanregistration,
+    trigger_fanchange
+} pollword_trigger_t;
+
+
+/*************************************************** Gerph *********
+ Function:      pollword_register
+ Description:   Register a pollword for notifications of changes
+ Parameters:    pollword -> the pollword that's being registered
+                bit_dying = bit to register for controller (or -1)
+                bit_fanregistration = bit to register for reg (or -1)
+                bit_fanchange = bit to register for changes (or -1)
+ Returns:       0 if successful; 1 if failed
+ ******************************************************************/
+int pollword_register(pollword_t pollword,
+                      int bit_dying,
+                      int bit_fanregistration,
+                      int bit_fanchange);
+
+
+/*************************************************** Gerph *********
+ Function:      pollword_deregister
+ Description:   Deregister a pollword to remove it - all the pollwords
+                with the same value will be removed
+ Parameters:    pollword -> the pollword that's being dregistered
+ Returns:       number freed
+ ******************************************************************/
+int pollword_deregister(pollword_t pollword);
+
+
+/*************************************************** Gerph *********
+ Function:      pollword_trigger
+ Description:   Trigger the pollword for a particular setting
+ Parameters:    trigger = the bit to trigger
+ Returns:       none
+ ******************************************************************/
+void pollword_trigger(pollword_trigger_t trigger);
+
+
+#endif

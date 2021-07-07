@@ -1,0 +1,109 @@
+/*******************************************************************
+ * File:     pollword.h
+ * Purpose:  Pollword management for FanController
+ * Author:   Gerph
+ ******************************************************************/
+
+#include <stdlib.h>
+
+#include "pollword.h"
+
+typedef struct pollword_reg_s {
+    struct pollword_reg_s * next;
+
+    pollword_t              pollword;
+    int                     bit_dying;
+    int                     bit_fanregistration;
+    int                     bit_fanchange;
+} pollword_reg_t;
+
+/* List of the pollwords we currently have registered */
+pollword_reg_t *pollword_regs = NULL;
+
+
+/*************************************************** Gerph *********
+ Function:      pollword_register
+ Description:   Register a pollword for notifications of changes
+ Parameters:    pollword -> the pollword that's being registered
+                bit_dying = bit to register for controller (or -1)
+                bit_fanregistration = bit to register for reg (or -1)
+                bit_fanchange = bit to register for changes (or -1)
+ Returns:       0 if successful; 1 if failed
+ ******************************************************************/
+int pollword_register(pollword_t pollword,
+                      int bit_dying,
+                      int bit_fanregistration,
+                      int bit_fanchange)
+{
+    pollword_reg_t *pwr;
+
+    pwr = calloc(sizeof(*pwr), 1);
+    if (!pwr)
+        return 1;
+
+    pwr->next = pollword_regs;
+    pwr->bit_dying = bit_dying;
+    pwr->bit_fanregistration = bit_fanregistration;
+    pwr->bit_fanchange = bit_fanchange;
+
+    return 0;
+}
+
+
+/*************************************************** Gerph *********
+ Function:      pollword_deregister
+ Description:   Deregister a pollword to remove it - all the pollwords
+                with the same value will be removed
+ Parameters:    pollword -> the pollword that's being dregistered
+ Returns:       number freed
+ ******************************************************************/
+int pollword_deregister(pollword_t pollword)
+{
+    pollword_reg_t **last_pwr;
+    pollword_reg_t *pwr;
+    int nfreed = 0;
+
+    last_pwr = &pollword_regs;
+    for (pwr=pollword_regs; pwr; pwr=*last_pwr)
+    {
+        if (pwr->pollword == pollword)
+        {
+            /* This is one to free */
+            *last_pwr = pwr->next;
+            free(pwr);
+            nfreed += 1;
+        }
+        else
+        {
+            /* Keep this one */
+            last_pwr = &pwr->next;
+        }
+    }
+    return nfreed;
+}
+
+/*************************************************** Gerph *********
+ Function:      pollword_trigger
+ Description:   Trigger the pollword for a particular setting
+ Parameters:    trigger = the bit to trigger
+ Returns:       none
+ ******************************************************************/
+void pollword_trigger(pollword_trigger_t trigger)
+{
+    pollword_reg_t *pwr;
+
+    for (pwr=pollword_regs; pwr; pwr=pwr->next)
+    {
+        int bit = -1;
+        if (trigger == trigger_dying)
+            bit = pwr->bit_dying;
+        else if (trigger == trigger_fanregistration)
+            bit = pwr->bit_fanregistration;
+        else if (trigger == trigger_fanchange)
+            bit = pwr->bit_fanchange;
+
+        if (bit != -1)
+            *pwr->pollword |= (1lu<<bit);
+    }
+}
+

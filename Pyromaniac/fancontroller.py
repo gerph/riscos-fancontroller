@@ -267,6 +267,36 @@ class FanDescriptor(object):
         self.location_id = new_location_id
 
 
+class TaskPollWord(object):
+
+    def __init__(self, ro, address, bit_dying, bit_registrations, bit_errors):
+        self.ro = ro
+        self.address = address
+        self.memory = self.ro.memory[address]
+        self.bit_dying = bit_dying
+        self.bit_registrations = bit_registrations
+        self.bit_errors = bit_errors
+
+    def __repr__(self):
+        return "<{}(pollword=&{:08x}, dying={}, registrations={}, errors={})>".format(self.__class__.__name__,
+                                                                                      self.address,
+                                                                                      self.bit_dying,
+                                                                                      self.bit_registrations,
+                                                                                      self.bit_errors)
+
+    def notify_dying(self):
+        if self.bit_dying != -1:
+            self.memory.word |= (1<<self.bit_dying)
+
+    def notify_registrations(self):
+        if self.bit_registrations != -1:
+            self.memory.word |= (1<<self.bit_registrations)
+
+    def notify_errors(self):
+        if self.bit_errors != -1:
+            self.memory.word |= (1<<self.bit_errors)
+
+
 class Fans(object):
     """
     Management for the registered fans.
@@ -277,12 +307,33 @@ class Fans(object):
         self.next_fan_id = 1
         # Our fans, keyed by their fan_id
         self.fans = {}
+        # Pollwords, keyed by their address
+        self.pollwords = {}
+
+    def __repr__(self):
+        return "<{}({} fans, {} pollwords)>".format(self.__class__.__name__,
+                                                    len(self.fans),
+                                                    len(self.pollwords))
+
+    def notify_shutdown(self):
+        for pw in self.pollwords.values():
+            pw.notify_dying()
+
+    def notify_registrations(self):
+        for pw in self.pollwords.values():
+            pw.notify_registrations()
+
+    def notify_errors(self):
+        for pw in self.pollwords.values():
+            pw.notify_errors()
 
     def shutdown(self):
         # Deregister all fans / release memory
         for fan in self.fans.values():
             fan.destroy()
         self.fans = {}
+        self.notify_shutdown()
+        self.pollwords = {}
 
     def new_fanid(self):
         fan_id = self.next_fan_id
@@ -297,6 +348,7 @@ class Fans(object):
         self.ro.kernel.api.os_servicecall(FanConstants.Service_FanControllerFanChanged,
                                           regs={0: fan_id,
                                                 2: FanConstants.Service_FanControllerFanChanged_Added})
+        self.notify_registrations()
         return fan_id
 
     def deregister(self, fan_id):
@@ -306,6 +358,7 @@ class Fans(object):
         self.ro.kernel.api.os_servicecall(FanConstants.Service_FanControllerFanChanged,
                                           regs={0: fan_id,
                                                 2: FanConstants.Service_FanControllerFanChanged_Removed})
+        self.notify_registrations()
 
     def find_fan(self, fan_id):
         fan = self.fans.get(fan_id, None)
@@ -313,6 +366,15 @@ class Fans(object):
             raise RISCOSSyntheticError(self.ro, FanConstants.ErrorNumber_BadFan,
                                        "Bad fan identifier &{:x} specified to FanController".format(fan_id))
         return fan
+
+    def add_pollword(self, address, bit_dying, bit_registrations, bit_errors):
+        pw = TaskPollWord(self.ro, address, bit_dying, bit_registrations, bit_errors)
+        self.pollwords[address] = pw
+
+    def remove_pollword(self, address, bit_dying, bit_registrations, bit_errors):
+        # Don't error if they removed something that didn't exist
+        if address in self.pollwords:
+            del self.pollwords[address]
 
     def __iter__(self):
         for fan_id, fan in sorted(self.fans.items()):
@@ -326,8 +388,8 @@ class Fans(object):
 
 
 class FanController(PyModule):
-    version = '0.01'
-    date = '24 Jan 2020'
+    version = '0.02'
+    date = '01 May 2020'
     swi_base = 0x10080  # FIXME: Not registered
     swi_prefix = "FanController"
     swi_names = [
@@ -336,7 +398,7 @@ class FanController(PyModule):
             "Info",
             "Speed",
             "Configure",
-            "5",
+            "TaskPollWord",
             "6",
             "7",
             "8",
@@ -367,7 +429,7 @@ class FanController(PyModule):
              'Syntax: *FanSpeed <Fan> (<Speed>)')
         ]
 
-    api_version = 100
+    api_version = 101
 
     def __init__(self, ro, module):
         super(FanController, self).__init__(ro, module)
@@ -377,6 +439,7 @@ class FanController(PyModule):
                 2: self.swi_info,
                 3: self.swi_speed,
                 4: self.swi_configure,
+                5: self.swi_taskpollword,
 
                 16: self.swi_register,
                 17: self.swi_deregister,
@@ -417,6 +480,11 @@ class FanController(PyModule):
             print("FanController: Announcing initialised/finalised: state=&{:x}".format(state))
 
         self.ro.kernel.api.os_servicecall(state)
+
+    def service(self, service, regs):
+        if service == FanConstants.Service_FanControllerFanChangedState:
+            # A driver has notified us of an error state, so we need to update the pollwords
+            self.fans.notify_errors()
 
     def swi(self, offset, regs):
         func = self.swi_dispatch.get(offset, None)
@@ -549,6 +617,27 @@ class FanController(PyModule):
                                        "FanController_Configure operation {} not supported".format(config))
 
         regs[2] = result
+        return True
+
+    def swi_taskpollword(self, regs):
+        """
+        SWI FanController_TaskPollWord - Register or deregister a pollword
+
+        =>  R0 = pointer to word-aligned pollword
+            R1 = bit number to set for FanController_Dying, or -1 for no bit
+            R2 = bit number to set for registrations, or -1 for no bit
+            R3 = bit number to set for error states, or -1 for no bit
+        <=  none
+        """
+        pollword = regs[0]
+        bit_dying = regs[1]
+        bit_registrations = regs[2]
+        bit_errors = regs[3]
+
+        if bit_dying == -1 and bit_registrations == -1 and bit_errors == -1:
+            self.fans.remove_pollword(pollword)
+        else:
+            self.fans.add_pollword(pollword, bit_dying, bit_registrations, bit_errors)
         return True
 
     def swi_register(self, regs):
