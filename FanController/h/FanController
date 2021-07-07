@@ -133,16 +133,16 @@ typedef enum fanconfigure_reason_e {
 
 #endif
 
-// Service calls - NOT registered
-#define Service_FanControllerStarted (0x10040)
-#define Service_FanControllerDying (0x10041)
-#define Service_FanControllerFanChanged (0x10042)
+// Service calls - registered range &810C0 - &10FF
+#define Service_FanControllerStarted (0x810C0)
+#define Service_FanControllerDying (0x810C1)
+#define Service_FanControllerFanChanged (0x810C2)
 #define Service_FanControllerFanChanged_Removed (0)
 #define Service_FanControllerFanChanged_Added (1)
-#define Service_FanControllerFanChangedState (0x10043)
+#define Service_FanControllerFanChangedState (0x810C3)
 
-// Error numbers - NOT registered
-#define ErrorBase_FanController (0x10040)
+// Error numbers - registered range &821900 - &8219FF
+#define ErrorBase_FanController (0x821900)
 #define ErrorNumber_BadFan (ErrorBase_FanController + 0)
 #define ErrorNumber_BadConfigure (ErrorBase_FanController + 1)
 #define ErrorNumber_BadControlMode (ErrorBase_FanController + 2)
@@ -150,9 +150,9 @@ typedef enum fanconfigure_reason_e {
 #define ErrorNumber_CannotSetSpeed (ErrorBase_FanController + 16)
 #define ErrorNumber_CannotSetLocation (ErrorBase_FanController + 17)
 
-// SWI numbers
+// SWI numbers - registered range &5A1C0 - &5A1FF
 #ifndef FanController_Version
-#define FanController_0 (0x10080)
+#define FanController_0 (0x5A1C0)
 #define FanController_Version (FanController_0 + 0)
 #define FanController_Enumerate (FanController_0 + 1)
 #define FanController_Info (FanController_0 + 2)
