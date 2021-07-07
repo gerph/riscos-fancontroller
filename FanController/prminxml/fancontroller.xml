@@ -1400,6 +1400,7 @@ UNTIL fan_id% = -1
     <change>Notifications documentation added to the Technical Details section.</change>
     <change>SWI FanController_TaskPollWord added.</change>
     <change>API version updated to 1.01.</change>
+  </revision>
   <revision number="6" author="Gerph" date="02 Jun 2021" title="Registrations applied">
     <change>Registrations of SWIs, error base, and services have been applied.</change>
     <change>API version number increased to 1.01, as the SWI interface has changed its number.</change>
