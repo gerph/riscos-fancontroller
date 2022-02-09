@@ -116,9 +116,10 @@ failed, either because they are detected as broken, or monitoring reports that t
 <p>
     <value-table>
         <!-- Consider we might allow special error codes from a driver, eg 'pipe blocked' -->
-        <value number="&le; -3">Reserved for future error codes</value>
-        <value number="-2">Error: Fan has failed</value>
-        <value number="-1">Error: Fan is disconnected</value>
+        <value number="&le; -4">Reserved for future error codes</value>
+        <value number="-3">Error: Fan has failed</value>
+        <value number="-2">Error: Fan is disconnected or not contactable</value>
+        <value number="-1">Fan speed is unknown</value>
         <value number="0">Fan is disabled</value>
         <value number="1-100">Fan is duty-cycle (or equivalent) controlled, to a percentage value.
             0 and 100 may be used for binary controlled fans</value>

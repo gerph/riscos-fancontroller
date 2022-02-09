@@ -104,6 +104,8 @@ static idmessages_t control_modes[] = {
     /* FIXME: Really these should be internationalised */
     if (speed == FanState_Off)
         speed_msg = "Off";
+    else if (speed == FanState_Unknown)
+        speed_msg = "Unknown";
     else if (speed == FanState_Failed)
         speed_msg = "Failed";
     else if (speed == FanState_Disconnected)
