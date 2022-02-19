@@ -294,7 +294,13 @@ fancontrolmode_t fan_setcontrol(fan_t *fan, fancontrolmode_t mode)
         /* Change to managed so that we keep it as managed */
         current = FanControl_Managed;
     }
-    fan->control_mode = current;
+
+    /* If it changed, notify about it */
+    if (fan->control_mode != current)
+    {
+        fan->control_mode = current;
+        fan_notify_changemode(fan);
+    }
 
     return current;
 }
@@ -327,13 +333,13 @@ fansetlocation_result_t fan_setlocation(fan_t *fan, unsigned long location_id)
 
 
 /*************************************************** Gerph *********
- Function:      fan_announce
+ Function:      fan_notify_announce
  Description:   Announce the arrival, or leaving, of a fan
  Parameters:    fan-> the fan to announce
                 started = 1 if started; 0 if dying
  Returns:       none
  ******************************************************************/
-void fan_announce(fan_t *fan, int started)
+void fan_notify_announce(fan_t *fan, int started)
 {
     _swix(OS_ServiceCall, _INR(0, 2),
                           fan->fan_id,
@@ -341,4 +347,20 @@ void fan_announce(fan_t *fan, int started)
                           started ? Service_FanControllerFanChanged_Added
                                   : Service_FanControllerFanChanged_Removed);
     pollword_trigger(trigger_fanregistration);
+}
+
+
+/*************************************************** Gerph *********
+ Function:      fan_notify_changemode
+ Description:   Notify users that the mode has changed
+ Parameters:    fan-> the fan to notify about
+ Returns:       none
+ ******************************************************************/
+void fan_notify_changemode(fan_t *fan)
+{
+    _swix(OS_ServiceCall, _INR(0, 2),
+                          fan->fan_id,
+                          Service_FanControllerFanChanged,
+                          fan->control_mode);
+    pollword_trigger(trigger_fanchangemode);
 }

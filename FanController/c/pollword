@@ -14,7 +14,8 @@ typedef struct pollword_reg_s {
     pollword_t              pollword;
     int                     bit_dying;
     int                     bit_fanregistration;
-    int                     bit_fanchange;
+    int                     bit_fanchangeerror;
+    int                     bit_fanchangemode;
 } pollword_reg_t;
 
 /* List of the pollwords we currently have registered */
@@ -27,13 +28,15 @@ pollword_reg_t *pollword_regs = NULL;
  Parameters:    pollword -> the pollword that's being registered
                 bit_dying = bit to register for controller (or -1)
                 bit_fanregistration = bit to register for reg (or -1)
-                bit_fanchange = bit to register for changes (or -1)
+                bit_fanchangeerror = bit to register for errors (or -1)
+                bit_fanchangemode = bit to register for mode changes (or -1)
  Returns:       0 if successful; 1 if failed
  ******************************************************************/
 int pollword_register(pollword_t pollword,
                       int bit_dying,
                       int bit_fanregistration,
-                      int bit_fanchange)
+                      int bit_fanchangeerror,
+                      int bit_fanchangemode)
 {
     pollword_reg_t *pwr;
 
@@ -44,7 +47,8 @@ int pollword_register(pollword_t pollword,
     pwr->next = pollword_regs;
     pwr->bit_dying = bit_dying;
     pwr->bit_fanregistration = bit_fanregistration;
-    pwr->bit_fanchange = bit_fanchange;
+    pwr->bit_fanchangeerror = bit_fanchangeerror;
+    pwr->bit_fanchangemode = bit_fanchangemode;
 
     return 0;
 }
@@ -99,8 +103,10 @@ void pollword_trigger(pollword_trigger_t trigger)
             bit = pwr->bit_dying;
         else if (trigger == trigger_fanregistration)
             bit = pwr->bit_fanregistration;
-        else if (trigger == trigger_fanchange)
-            bit = pwr->bit_fanchange;
+        else if (trigger == trigger_fanchangeerror)
+            bit = pwr->bit_fanchangeerror;
+        else if (trigger == trigger_fanchangemode)
+            bit = pwr->bit_fanchangemode;
 
         if (bit != -1)
             *pwr->pollword |= (1lu<<bit);

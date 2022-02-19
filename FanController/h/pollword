@@ -13,7 +13,8 @@ typedef unsigned long *pollword_t;
 typedef enum pollword_trigger_s {
     trigger_dying,
     trigger_fanregistration,
-    trigger_fanchange
+    trigger_fanchangeerror,
+    trigger_fanchangemode
 } pollword_trigger_t;
 
 
@@ -23,13 +24,15 @@ typedef enum pollword_trigger_s {
  Parameters:    pollword -> the pollword that's being registered
                 bit_dying = bit to register for controller (or -1)
                 bit_fanregistration = bit to register for reg (or -1)
-                bit_fanchange = bit to register for changes (or -1)
+                bit_fanchangeerror = bit to register for errors (or -1)
+                bit_fanchangemode = bit to register for mode changes (or -1)
  Returns:       0 if successful; 1 if failed
  ******************************************************************/
 int pollword_register(pollword_t pollword,
                       int bit_dying,
                       int bit_fanregistration,
-                      int bit_fanchange);
+                      int bit_fanchangeerror,
+                      int bit_fanchangemode);
 
 
 /*************************************************** Gerph *********
