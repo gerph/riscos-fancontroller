@@ -567,8 +567,8 @@ registration or deregistration.</p>
                     description="A change has occurred in the state of a fan state">
 <entry>
  <register-use number="0">Fan identifier</register-use>
- <register-use number="1">Service number (&hex;810C2)</register-use>
- <register-use number="2">Fan state, as a speed - either a negative value or a speed</register-use>
+ <register-use number="1">Service number (&hex;810C3)</register-use>
+ <register-use number="2">Fan <reference type='subsection' name='Speed'/> - either a negative value or a speed</register-use>
 </entry>
 
 <exit>
@@ -590,6 +590,40 @@ normally.</p>
 </related>
 
 </service-definition>
+
+
+
+<service-definition name="FanController_FanChangedControlMode"
+                    number="810C4"
+                    description="A change has occurred in the control mode of a fan state">
+<entry>
+ <register-use number="0">Fan identifier</register-use>
+ <register-use number="1">Service number (&hex;810C4)</register-use>
+ <register-use number="2"><reference type='subsection' name='Control mode'/></register-use>
+</entry>
+
+<exit>
+ <register-use number="0" state="preserved" />
+ <register-use number="1" state="preserved" />
+ <register-use number="2" state="preserved" />
+</exit>
+
+<use>
+<p>This service call may be issued by the FanController module when the control mode
+used by a fan is changed. This allows clients to update their tracking of the fan.
+In particular, this should be used by managers for fans to be aware that they should
+stop managing the fan because the fan has been placed in manual or automatic mode
+instead of managed mode.</p>
+
+</use>
+
+<related>
+<!-- <reference type="sysvar" name="Sys$Variable" /> -->
+</related>
+
+</service-definition>
+
+
 </section>
 
 
@@ -603,12 +637,18 @@ normally.</p>
                 re-entrant="no">
 
 <exit>
- <register-use number="0">Version number of the API * 100 (1.01 for this version)</register-use>
+ <register-use number="0">Version number of the API * 100 (1.02 for this version)</register-use>
 </exit>
 
 <use>
 <p>This SWI is used to read the API version for the FanController module. Updated minor versions
 may introduce new features to the API. Major versions will be incompatible.</p>
+
+<list>
+    <item>1.00 had unregistered SWI, error and service call numbers.</item>
+    <item>1.01 used the registered SWI, error and service call numbers.</item>
+    <item>1.02 adds <reference type="service" name="FanController_FanChangedControlMode" />.</item>
+</list>
 </use>
 
 <related>
@@ -790,14 +830,23 @@ that the other registers are not populated).</p>
 </exit>
 
 <use>
-<p>This SWI is used to configure how the fan speed is controlled. When under manual control,
-    the fan remains at the speed set. When under automatic control, the fan reacts to the
-    system to control its speed. The manner in which it detects its needs is implementation
-    defined.</p>
+<p>This SWI is used to configure how the fan speed is controlled.
+    When under manual control, the fan remains at the speed set.
+    When under automatic control, the fan or driver reacts to the
+    environment to control its speed.
+    When under managed control, the fan is controlled by
+    another component (a module or application) on the system.</p>
+
+<p>The manner in which the automatic or managed control modes detect
+   the changes required is implementation defined for each fan.
+   Automatic fan drivers may include integrated sensors for monitoring
+   the temperature. Managed controls may communicate with other sensors
+   on the system (such as the CPU die temperature).</p>
 </use>
 
 <related>
   <reference type="swi" name="FanController_Configure" />
+  <reference type="service" name="FanController_FanChangedControlMode" />
 </related>
 
 </swi-definition>
@@ -1405,6 +1454,10 @@ UNTIL fan_id% = -1
   <revision number="6" author="Gerph" date="02 Jun 2021" title="Registrations applied">
     <change>Registrations of SWIs, error base, and services have been applied.</change>
     <change>API version number increased to 1.01, as the SWI interface has changed its number.</change>
+  </revision>
+  <revision number="7" author="Gerph" date="19 Feb 2022" title="Service_FanChangedControlMode">
+    <change>Service_FanChangedControlMode added, as this is necessary for managed drivers.</change>
+    <change>API version number increased to 1.02, as the SWI interface has changed its number.</change>
   </revision>
  </history>
 
