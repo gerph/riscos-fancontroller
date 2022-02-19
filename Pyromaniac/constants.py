@@ -103,16 +103,16 @@ class FanConstants(object):
     FanController_Configure_Control = 0
     FanController_Configure_Location = 1
 
-    # Service calls - NOT registered
-    Service_FanControllerStarted = 0x10040
-    Service_FanControllerDying = 0x10041
-    Service_FanControllerFanChanged = 0x10042
+    # Service calls - Registered
+    Service_FanControllerStarted = 0x810C0
+    Service_FanControllerDying = 0x810C1
+    Service_FanControllerFanChanged = 0x810C2
     Service_FanControllerFanChanged_Removed = 0
     Service_FanControllerFanChanged_Added = 1
-    Service_FanControllerFanChangedState = 0x10043
+    Service_FanControllerFanChangedState = 0x810C3
 
-    # Error numbers - NOT registered
-    ErrorBase_FanController = 0x10040
+    # Error numbers - Registered
+    ErrorBase_FanController = 0x821900
     ErrorNumber_BadFan = ErrorBase_FanController + 0
     ErrorNumber_BadConfigure = ErrorBase_FanController + 1
     ErrorNumber_BadControlMode = ErrorBase_FanController + 2
@@ -122,7 +122,7 @@ class FanConstants(object):
     ErrorNumber_CannotSetLocation = ErrorBase_FanController + 17
 
     # SWI numbers
-    SWIFanController_0 = 0x10080
+    SWIFanController_0 = 0x5A1C0
     SWIFanController_Version = SWIFanController_0 + 0
     SWIFanController_Enumerate = SWIFanController_0 + 1
     SWIFanController_Info = SWIFanController_0 + 2
