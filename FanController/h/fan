@@ -106,13 +106,21 @@ fancontrolmode_t fan_setcontrol(fan_t *fan, fancontrolmode_t mode);
 fansetlocation_result_t fan_setlocation(fan_t *fan, unsigned long location_id);
 
 /*************************************************** Gerph *********
- Function:      fan_announce
+ Function:      fan_notify_announce
  Description:   Announce the arrival, or leaving, of a fan
  Parameters:    fan-> the fan to announce
                 started = 1 if started; 0 if dying
  Returns:       none
  ******************************************************************/
-void fan_announce(fan_t *fan, int started);
+void fan_notify_announce(fan_t *fan, int started);
+
+/*************************************************** Gerph *********
+ Function:      fan_notify_changemode
+ Description:   Notify users that the mode has changed
+ Parameters:    fan-> the fan to notify about
+ Returns:       none
+ ******************************************************************/
+void fan_notify_changemode(fan_t *fan);
 
 
 #endif

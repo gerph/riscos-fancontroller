@@ -45,7 +45,7 @@ int fans_final(void)
     while (fan)
     {
         fan_t *next = fan->next;
-        fan_announce(fan, 0);
+        fan_notify_announce(fan, 0);
         fan_destroy(fan);
         fan = next;
     }
@@ -72,7 +72,7 @@ int fans_register(fan_t *fan)
     *fans.fanstailp = fan;
 
     /* Issue service that we have a new fan */
-    fan_announce(fan, 1);
+    fan_notify_announce(fan, 1);
     return 0;
 }
 
@@ -108,7 +108,7 @@ int fans_deregister(int fan_id)
     *lastp = cur->next; /* unlinks from the list */
 
     /* Issue service that we have removed a fan */
-    fan_announce(cur, 0);
+    fan_notify_announce(cur, 0);
 
     /* Finally free the memory */
     fan_destroy(cur);

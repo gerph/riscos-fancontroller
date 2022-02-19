@@ -901,6 +901,7 @@ that the other registers are not populated).</p>
  <register-use number="1">Bit number (0-31) to set when FanController dies, or -1 to set no bit</register-use>
  <register-use number="2">Bit number (0-31) to set when a driver is registered or deregistered, or -1 to set no bit</register-use>
  <register-use number="3">Bit number (0-31) to set when a driver changes its error state, or -1 to set no bit</register-use>
+ <register-use number="4">Bit number (0-31) to set when a fan has its control mode changed, or -1 to set no bit</register-use>
 </entry>
 <exit>
  <register-use number="0-3" state="preserved"/>
@@ -913,20 +914,48 @@ that the other registers are not populated).</p>
     The pollword address supplied in R0 must be in globally addressable memory (such as the relocatable module area), and must be writeable in SVC mode.
 </p>
 <p>
-    When the FanController reaches one of the three events (FanController death, driver registration/deregistration, or driver error state change) it will update the pollword by setting the bit requested.
+    When the FanController detects a state change it will update the pollword by setting the bit requested.
     Applications may use the pollword in their <reference type="swi" name="Wimp_Poll" href="?"/> calls.
     On servicing the pollword event, it is the responsibility of the application to clear the pollword
     bits.
 </p>
 
+<p>The states that are reported are:</p>
+
 <p>
-    This SWI was added in API version 1.01.
+<list>
+    <item>FanController death. This is when the module itself is shut down. As it does so,
+        all the pollwords are updated with this bit. Clients should use this to indicate
+        that all information they hold about fans is invalid and should be retrieved in
+        full when needed.</item>
+
+    <item>Driver registration or deregistration. This is when a new driver is registered,
+        or an existing driver is deregistered. Clients should use this to check whether
+        the information they hold about fans is still valid. The fans they are interested
+        in may have appeared, or may have been removed.</item>
+
+    <item>Driver error state. This is when a driver has indicated that it has transitioned
+        to an error condition, or returned from an error condition to normal operation.
+        Clients should use this to update their information about the operation of the
+        fans if ncessary.</item>
+
+    <item>Fan control mode has changed. This is when a fan's control mode has been changed
+        by a SWI call. It will usually occur when the fan transitions from manual control
+        to one of the automatic modes or the managed mode. Clients should use this to update
+        their information about the state of the fan.
+    </item>
+</list>
+</p>
+
+<p>
+    This SWI was added in API version 1.01, and updated in 1.02 to add the control mode bit.
 </p>
 </use>
 
 <related>
  <reference type="swi" name="FanController_Deregister" />
  <reference type="service" name="FanController_FanChanged" />
+ <reference type="service" name="FanController_FanChangedControlMode" />
  <reference type="entry" name="FanDriver" />
  <reference type="error" name="RegisterFailed" />
 </related>
@@ -1427,7 +1456,7 @@ UNTIL fan_id% = -1
  </maintainer>
  <disclaimer>
     <p>
-        &copy; Gerph, Chris Johns, 2021.
+        &copy; Gerph, Chris Johns, 2021-2022.
     </p>
  </disclaimer>
 
@@ -1457,7 +1486,9 @@ UNTIL fan_id% = -1
   </revision>
   <revision number="7" author="Gerph" date="19 Feb 2022" title="Service_FanChangedControlMode">
     <change>Service_FanChangedControlMode added, as this is necessary for managed drivers.</change>
-    <change>API version number increased to 1.02, as the SWI interface has changed its number.</change>
+    <change>FanController_TaskPollWord updated with control mode bit.</change>
+    <change>API version number increased to 1.02, as the SWIs and services have changed.
+            Should be safe even still, as there are currently no users of the interface.</change>
   </revision>
  </history>
 
