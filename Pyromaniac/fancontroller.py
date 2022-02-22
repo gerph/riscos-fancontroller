@@ -390,7 +390,7 @@ class Fans(object):
 class FanController(PyModule):
     version = '0.02'
     date = '01 May 2020'
-    swi_base = 0x10080  # FIXME: Not registered
+    swi_base = 0x5A1C0  # Registered
     swi_prefix = "FanController"
     swi_names = [
             "Version",
@@ -426,7 +426,7 @@ class FanController(PyModule):
             ('FanSpeed',
              "Displays or sets the speed of a fan.",
              0x00020001,
-             'Syntax: *FanSpeed <Fan> (<Speed>)')
+             'Syntax: *FanSpeed <Fan> [<Speed>]')
         ]
 
     api_version = 101
@@ -500,6 +500,7 @@ class FanController(PyModule):
         <=  R0 = version number of the API * 100 (1.00 for this version)
         """
         regs[0] = self.api_version
+        return True
 
     def _return_faninfo(self, regs, fan):
         """
