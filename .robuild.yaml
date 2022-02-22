@@ -65,6 +65,7 @@ jobs:
       - copy FanDriverDummy.rm32.FanDriverDummy Artifacts.* ~CV
       - cdir Artifacts.h
       - copy <CExport$Dir>.h.FanController Artifacts.h.FanController ~CV
+      - copy FanController.prminxml Artifacts.prminxml R~CV
       - copy examples Artifacts.examples ~CVR
       - copy LICENSE Artifacts.* ~CV
 
