@@ -360,7 +360,7 @@ void fan_notify_changemode(fan_t *fan)
 {
     _swix(OS_ServiceCall, _INR(0, 2),
                           fan->fan_id,
-                          Service_FanControllerFanChanged,
+                          Service_FanControllerFanChangedControlMode,
                           fan->control_mode);
     pollword_trigger(trigger_fanchangemode);
 }

@@ -141,6 +141,7 @@ typedef enum fanconfigure_reason_e {
 #define Service_FanControllerFanChanged_Removed (0)
 #define Service_FanControllerFanChanged_Added (1)
 #define Service_FanControllerFanChangedState (0x810C3)
+#define Service_FanControllerFanChangedControlMode (0x810C4)
 
 // Error numbers - registered range &821900 - &8219FF
 #define ErrorBase_FanController (0x821900)
