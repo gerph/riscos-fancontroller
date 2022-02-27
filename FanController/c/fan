@@ -259,17 +259,19 @@ fancontrolmode_t fan_setcontrol(fan_t *fan, fancontrolmode_t mode)
     }
 
 
-    if (mode == FanControl_Managed)
+    request = mode;
+    if (request == FanControl_Managed)
     {
         /* Managed is largely informational for interfaces; the driver only sees 'manual' */
         request = FanControl_Manual;
     }
-    else
-    {
-        request = mode;
-    }
 
     current = fan->control_mode;
+    if (current == FanControl_Managed)
+    {
+        /* Managed is largely informational for interfaces; the driver only sees 'manual' */
+        current = FanControl_Manual;
+    }
 
     /* Only call the driver if we're changing mode */
     if (request != current)
