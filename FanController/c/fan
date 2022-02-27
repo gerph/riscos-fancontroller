@@ -265,7 +265,9 @@ fancontrolmode_t fan_setcontrol(fan_t *fan, fancontrolmode_t mode)
         request = FanControl_Manual;
     }
     else
+    {
         request = mode;
+    }
 
     current = fan->control_mode;
 
