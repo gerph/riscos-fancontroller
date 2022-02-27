@@ -258,25 +258,23 @@ fancontrolmode_t fan_setcontrol(fan_t *fan, fancontrolmode_t mode)
         return FanControl_Error;
     }
 
-    request = mode;
+
     if (mode == FanControl_Managed)
     {
         /* Managed is largely informational for interfaces; the driver only sees 'manual' */
         request = FanControl_Manual;
     }
+    else
+        request = mode;
+
     current = fan->control_mode;
-    if (current == FanControl_Managed)
-    {
-        /* If we know we're in managed mode, then that's the same as manual */
-        current = FanControl_Manual;
-    }
 
     /* Only call the driver if we're changing mode */
     if (request != current)
     {
         err = _callx(fan->driver_code, fan->driver_ws,
                      _INR(0, 3)|_OUT(3),
-                     FanDriver_SetControlMode, fan->fan_id, fan->location_id, mode,
+                     FanDriver_SetControlMode, fan->fan_id, fan->location_id, request,
                      &current);
         if (err)
         {
