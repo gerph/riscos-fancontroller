@@ -41,10 +41,11 @@ jobs:
       - amu -f MakefileTestFan
       - /aif32.fan_test
 
+      # Required because of a bug in the Makefiles
+      - cdir built
       - amu -f Makefile export
       - amu -f Makefile ram
-      # Documentation build doesn't currently work on Pyromaniac (missing xsltproc)
-      #- '|amu -f Makefile docs'
+      - amu -f Makefile docs
       - dir ^
 
       - dir FanDriverDummy
@@ -61,11 +62,13 @@ jobs:
       - /examples.FindFan
 
       - cdir Artifacts
+      - cdir Artifacts.prminxml
       - copy FanController.rm32.FanController Artifacts.* ~CV
+      - copy FanController.prminxml.* Artifacts.prminxml.* R~CV
+      - copy FanController.built.docs.* Artifacts.prminxml.* ~CVR
       - copy FanDriverDummy.rm32.FanDriverDummy Artifacts.* ~CV
       - cdir Artifacts.h
       - copy <CExport$Dir>.h.FanController Artifacts.h.FanController ~CV
-      - copy FanController.prminxml Artifacts.prminxml R~CV
       - copy examples Artifacts.examples ~CVR
       - copy LICENSE Artifacts.* ~CV
 
