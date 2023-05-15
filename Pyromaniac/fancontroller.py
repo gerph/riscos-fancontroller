@@ -107,7 +107,7 @@ class FanDescriptor(object):
         if not self._speeds_mem:
             self._speeds_mem = self.ro.kernel.da_rma.allocate((len(self.speeds) + 1) * 4)
             self._speeds_mem.write_words(self.speeds)
-            self._speeds_mem[len(self.speeds) + 4].word = -1
+            self._speeds_mem[len(self.speeds) * 4 + 4].word = -1
         return self._speeds_mem.address
 
     def location_name(self):
@@ -328,11 +328,13 @@ class Fans(object):
             pw.notify_errors()
 
     def shutdown(self):
+        # Notify everyone that we've shut down
+        self.notify_shutdown()
+
         # Deregister all fans / release memory
         for fan in self.fans.values():
             fan.destroy()
         self.fans = {}
-        self.notify_shutdown()
         self.pollwords = {}
 
     def new_fanid(self):
@@ -354,6 +356,7 @@ class Fans(object):
     def deregister(self, fan_id):
         fan = self.find_fan(fan_id)
         del self.fans[fan_id]
+        fan.destroy()
         # Issue service to say the fan has been removed
         self.ro.kernel.api.os_servicecall(FanConstants.Service_FanControllerFanChanged,
                                           regs={0: fan_id,
@@ -371,7 +374,7 @@ class Fans(object):
         pw = TaskPollWord(self.ro, address, bit_dying, bit_registrations, bit_errors)
         self.pollwords[address] = pw
 
-    def remove_pollword(self, address, bit_dying, bit_registrations, bit_errors):
+    def remove_pollword(self, address):
         # Don't error if they removed something that didn't exist
         if address in self.pollwords:
             del self.pollwords[address]
@@ -631,9 +634,9 @@ class FanController(PyModule):
         <=  none
         """
         pollword = regs[0]
-        bit_dying = regs[1]
-        bit_registrations = regs[2]
-        bit_errors = regs[3]
+        bit_dying = regs.signed[1]
+        bit_registrations = regs.signed[2]
+        bit_errors = regs.signed[3]
 
         if bit_dying == -1 and bit_registrations == -1 and bit_errors == -1:
             self.fans.remove_pollword(pollword)
@@ -667,7 +670,7 @@ class FanController(PyModule):
         if speeds_ptr:
             speeds_mem = self.ro.memory[speeds_ptr]
             speeds = []
-            while speeds_mem.word != -1:
+            while speeds_mem.signedword != -1:
                 speeds.append(speeds_mem.word)
                 speeds_mem.address += 4
         else:
