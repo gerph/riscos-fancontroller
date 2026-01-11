@@ -15,6 +15,7 @@ jobs:
     env:
       "Sys$Environment": ROBuild
       "BUILD32": 1
+      "Alias$AMU": "HostAMU %*0"
 
     # Directory to change to before running script
     #dir: <working directory>
@@ -22,18 +23,6 @@ jobs:
     # Commands which should be executed to perform the build.
     # The build will terminate if any command returns a non-0 return code or an error.
     script:
-      # Set up some build environment bits
-      - cdir $.Build
-      - cdir $.Build.Export
-      - cdir $.Build.Export.C
-      - cdir $.Build.Install
-      - set Build$Dir $.Build
-      - set Exports$Dir <Build$Dir>.Export
-      - set CExport$Dir <Exports$Dir>.C
-      - set Install$Dir <Build$Dir>.Install
-      - set C$Path <CExport$Dir>.,<C$Path>
-      - set Locale UK
-
       # Maybe this lot should actually be in a makefile?
       - dir FanController
       - amu -f MakefileTestStr
