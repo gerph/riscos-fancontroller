@@ -15,7 +15,8 @@ jobs:
     env:
       "Sys$Environment": ROBuild
       "BUILD32": 1
-      "Alias$AMU": "HostAMU %*0"
+      #"Alias$AMU": "HostAMU %*0"
+      #"Alias$CC": "HostCC %*0"
 
     # Directory to change to before running script
     #dir: <working directory>
@@ -32,6 +33,7 @@ jobs:
 
       # Required because of a bug in the Makefiles
       - cdir built
+      - cdir $.Exports.C
       - amu -f Makefile export
       - amu -f Makefile ram
       - amu -f Makefile docs
