@@ -82,6 +82,7 @@ _kernel_oserror *Mod_Init(const char *tail, int podule_base, void *pw)
 _kernel_oserror *Mod_Final(int fatal, int podule_base, void *pw)
 {
     _swix(OS_RemoveCallBack, _INR(0, 1), StartupCallback_Entry, pw);
+    announce(0);
     fans_final();
     return NULL;
 }
