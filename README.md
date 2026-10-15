@@ -1,11 +1,14 @@
 # FanController
 
+[![Documentation](https://img.shields.io/badge/Generated-Documentation-yellow)](https://gerph.github.io/riscos-fancontroller/)
+
 ## Introduction
 
 The FanController module provides a registration point for hardware fan drivers
 to register with. This repository contains:
 
-* The documentation of the API (see FanController/prminxml/fancontroller.xml)
+* The documentation of the API (see FanController/prminxml/fancontroller.xml,
+  or the [published documentation](https://gerph.github.io/riscos-fancontroller/))
 * An implementation of the FanController (see FanController)
 * An example driver module (see FanDriverDummy)
 * Pyromaniac PyModules providing the original implementation (see Pyromaniac)
