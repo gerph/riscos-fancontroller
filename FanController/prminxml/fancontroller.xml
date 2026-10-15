@@ -644,11 +644,13 @@ instead of managed mode.</p>
 <p>This SWI is used to read the API version for the FanController module. Updated minor versions
 may introduce new features to the API. Major versions will be incompatible.</p>
 
+<p>
 <list>
     <item>1.00 had unregistered SWI, error and service call numbers.</item>
     <item>1.01 used the registered SWI, error and service call numbers.</item>
     <item>1.02 adds <reference type="service" name="FanController_FanChangedControlMode" />.</item>
 </list>
+</p>
 </use>
 
 <related>
